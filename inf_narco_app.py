@@ -299,6 +299,7 @@ if __name__ == '__main__':
             # For hard coding/bypassing json input argument, uncomment the following:
             # jsonObj = json.loads('{"channel_indices":{"centrals":[3,4],"occipitals":[5,6],"eog_l":7,"eog_r":8,"chin_emg":9}, "show":{"plot":false,"hypnodensity":false,"hypnogram":false}, "save":{"plot":false,"hypnodensity":true, "hypnogram":true}}')
             jsonObj = json.loads(sys.argv[2])
+            # jsonObj = json.loads('{"channel_indices":{"central":2,"occipital":3,"eog_l":0,"eog_r":0,"chin_emg":3}}')
             try:
                 main(edfFile, jsonObj)
             except OSError as oserr:

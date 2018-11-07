@@ -376,6 +376,7 @@ class Hypnodensity(object):
         # fill remaining (nExtra) values with the mean value of each column
         meanF = np.mean(np.mean(dat, 2), 0) * np.ones([1, Nextra, dat.shape[1]])
 
+
         dat = np.transpose(dat, [0, 2, 1])
         dat = np.concatenate([dat, meanF], 1)
 
