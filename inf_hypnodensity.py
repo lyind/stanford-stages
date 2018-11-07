@@ -378,6 +378,7 @@ class Hypnodensity(object):
 
 
 
+
         dat = np.transpose(dat, [0, 2, 1])
         dat = np.concatenate([dat, meanF], 1)
 
