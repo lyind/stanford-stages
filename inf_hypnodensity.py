@@ -298,6 +298,7 @@ class Hypnodensity(object):
             self.loaded_channels[ch] = signal.resample_poly(self.loaded_channels[ch],
                                         self.fs, fs, axis=0, window=('kaiser', 5.0))
 
+    def run_data(dat, model, root_model_path):
 
     def psg_noise_level(self):
 
