@@ -17,7 +17,7 @@ warnings.simplefilter('ignore', FutureWarning)  # warnings.filterwarnings("ignor
 import scipy.io as sio
 
 import tensorflow as tf
-import gpflow as gpf
+# import gpflow as gpf
 import random
 
 # For hypnodensity plotting ...
