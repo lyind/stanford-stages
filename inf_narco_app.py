@@ -9,7 +9,6 @@ import json  # for command line interface input and output.
 import os
 import sys
 import warnings
-import pdb;
 from datetime import datetime
 import pdb
 warnings.simplefilter('ignore', FutureWarning)  # warnings.filterwarnings("ignore")
@@ -18,7 +17,7 @@ warnings.simplefilter('ignore', FutureWarning)  # warnings.filterwarnings("ignor
 import scipy.io as sio
 
 import tensorflow as tf
-import gpflow as gpf
+# import gpflow as gpf
 import random
 
 # For hypnodensity plotting ...
