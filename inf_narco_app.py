@@ -26,6 +26,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
+# for reading EDF properties (starttime, ...)
+import pyedflib
+
+# for somno ANL format expost
+from format import format_anl
+
 from inf_hypnodensity import \
     Hypnodensity  # from inf_extract_features import ExtractFeatures --> moved to inf_hypnodensity.py
 from inf_config import AppConfig  # for AppConfig() <-- narco_biomarker(), [previously]
@@ -142,22 +148,19 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
          [0.22, 0.44, 0.73],  # blue
          [0.34, 0.70, 0.39]]  # green
 
-    for i in range(4):
-        xy = np.zeros([av.shape[0] * 2, 2])
-        xy[:av.shape[0], 0] = np.arange(av.shape[0])
-        xy[av.shape[0]:, 0] = np.flip(np.arange(av.shape[0]), axis=0)
+            poly = Polygon(xy, facecolor=C[i], edgecolor=None)
+            ax.add_patch(poly)
 
-        xy[:av.shape[0], 1] = av[:, i]
-        xy[av.shape[0]:, 1] = np.flip(av[:, i + 1], axis=0)
+        plt.xlim([0, av.shape[0]])
 
-        poly = Polygon(xy, facecolor=C[i], edgecolor=None)
-        ax.add_patch(poly)
+        # fig.savefig('test.png')
+        if savePlot:
+            fig.savefig(fileName)
+            # plt.savefig(fileName)
 
-    plt.xlim([0, av.shape[0]])
-    # fig.savefig('test.png')
-    if savePlot:
-        fig.savefig(fileName)
-        # plt.savefig(fileName)
+        if showPlot:
+            print("Showing hypnodensity")
+            plt.show()
 
     if showPlot:
         print("Showing hypnodensity - close figure to continue.")
