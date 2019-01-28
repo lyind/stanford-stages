@@ -40,8 +40,6 @@ def softmax(x):
     return np.divide(e_x, div)
 
 def softmax(x):
-    # e_x = np.exp(x - np.max(x))
-    # return e_x / e_x.sum()
     e_x = np.exp(x)
     div = np.repeat(np.expand_dims(np.sum(e_x, axis=1), 1), 5, axis=1)
     return np.divide(e_x, div)
