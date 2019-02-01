@@ -163,10 +163,10 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
             print("Showing hypnodensity")
             plt.show()
 
-    if showplot:
+    if hypnoConfig['show']['plot']:
         from inf_config import ACConfig
-           print("Showing hypnodensity - close figure to continue.")
-           plt.show()
+        print("Showing hypnodensity - close figure to continue.")
+        plt.show()
 
 class NarcoApp(object):
 
