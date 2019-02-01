@@ -82,6 +82,7 @@ def main(edfFilename,
     appConfig.lightsOn = configInput.get('lightsOn', [])
 
     hyp = {'show': {}, 'save': {}, 'filename': {}}
+    hyp['edfProps'] = extractEdfProperties(edfFilename)
     hyp['show']['plot'] = False
     hyp['show']['hypnogram'] = False
     hyp['show']['hypnodensity'] = False
@@ -148,8 +149,8 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
          [0.22, 0.44, 0.73],  # blue
          [0.34, 0.70, 0.39]]  # green
 
-            poly = Polygon(xy, facecolor=C[i], edgecolor=None)
-            ax.add_patch(poly)
+        poly = Polygon(xy, facecolor=C[i], edgecolor=None)
+        ax.add_patch(poly)
 
         plt.xlim([0, av.shape[0]])
 
@@ -162,9 +163,10 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
             print("Showing hypnodensity")
             plt.show()
 
-    if showPlot:
-        print("Showing hypnodensity - close figure to continue.")
-        plt.show()
+    if showplot:
+        from inf_config import ACConfig
+           print("Showing hypnodensity - close figure to continue.")
+           plt.show()
 
 class NarcoApp(object):
 

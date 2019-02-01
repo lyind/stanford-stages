@@ -253,7 +253,7 @@ class Hypnodensity(object):
                 print('Resampling done')
 
                 # Trim excess
-                self.trim(ch)
+#                self.trim(ch)
 
             else:
                 print('channel[', ch, '] was empty (skipped)', sep='')
