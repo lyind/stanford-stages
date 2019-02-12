@@ -69,14 +69,12 @@ def main(edfFilename,
         'chin_emg': 'EMG'
     }
 
-    for channel_category, channel_index in configInput["channel_indices"].items():
-        channel_label = channel_categories.get(channel_category, None)
-        if channel_label is not None:
-            if type(channel_index) is list or type(channel_index) is tuple:  # ==type(tuple):
-                for i in range(len(channel_index)):
-                    appConfig.channels_used[channel_label[i]] = channel_index[i]
-            else:
-                appConfig.channels_used[channel_label] = channel_index
+
+
+
+    Deck = {}
+    Dimension = {}
+    Frequenz = {}
 
     appConfig.lightsOff = configInput.get('lightsOff', [])
     appConfig.lightsOn = configInput.get('lightsOn', [])
