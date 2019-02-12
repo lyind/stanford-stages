@@ -34,7 +34,6 @@ class AppConfig(object):
                        }
         #self.CCsize = dict(zip(self.channels,
         #                [2,2,2,2,4,4,0.4,[],[]]))
-        self.channels_used =   dict.fromkeys(self.channels)
         self.loaded_channels = dict.fromkeys(self.channels)
 
         self.psg_noise_file_pathname = './ml/noiseM.mat'
