@@ -53,8 +53,7 @@ class Hypnodensity(object):
         self.CCsize = appConfig.CCsize
 
         self.channels = appConfig.channels
-        self.channels_used = appConfig.channels_used
-        self.loaded_channels = appConfig.loaded_channels
+#        self.loaded_channels = appConfig.loaded_channels
         self.edf_pathname = appConfig.edf_path
         self.encodedD = []
         self.fs = int(appConfig.fs)
@@ -63,6 +62,7 @@ class Hypnodensity(object):
         self.lightsOff = appConfig.lightsOff
         self.lightsOn = appConfig.lightsOn
 
+        #self.edf = Deck
         self.edf = []  # pyedflib.EdfFileReader
 
     def evaluate(self):
@@ -204,7 +204,8 @@ class Hypnodensity(object):
         count = -1
         enc = []
 
-        for c in self.channels_used: # Central, Occipital, EOG-L, EOG-R, chin
+ ###       for c in self.channels_used: # Central, Occipital, EOG-L, EOG-R, chin
+        for c in self.loaded_channels:
             # append autocorrelations
             enc.append(encode_data(self.loaded_channels[c], self.loaded_channels[c], self.CCsize[c], 0.25, self.fs))
 
@@ -212,9 +213,8 @@ class Hypnodensity(object):
         enc.append(encode_data(self.loaded_channels['EOG-L'], self.loaded_channels['EOG-R'], self.CCsize['EOG-L'], 0.25, self.fs))
         min_length = np.min([x.shape[1] for x in enc])
         enc = [v[:, :min_length] for v in enc]
-
         # Central, Occipital, EOG-L, EOG-R, EOG-L/R, chin
-        enc = np.concatenate([enc[0], enc[1], enc[2], enc[3], enc[5], enc[4]], axis=0)
+        enc = np.concatenate([enc[2], enc[3], enc[0], enc[1], enc[5], enc[4]], axis=0)
         self.encodedD = enc
 
         # Needs double checking as magic numbers are problematic here and will vary based on configuration settings.  @hyatt 11/12/2018
@@ -224,40 +224,168 @@ class Hypnodensity(object):
             self.encodedD = self.encodedD[:,
                             4 * 30 * self.lightsOff:4 * 30 * self.lightsOn]
 
+
     def loadEDF(self):
+        self.loaded_channels = {}
         if not self.edf:
 
             try:
                 self.edf = pyedflib.EdfReader(self.edf_pathname)
             except OSError as osErr:
-                print("OSError:", "Loading", self.edf_pathname)
+                print("OSError:", "NayNay Loading", self.edf_pathname)
                 raise (osErr)
 
-        for ch in self.channels:  # ['C3','C4','O1','O2','EOG-L','EOG-R','EMG','A1','A2']
-            myprint('Loading', ch)
-            if isinstance(self.channels_used[ch], int):
+        Deck = {}
+        Dimension = {}
+        Frequenz = {}
+        #used_file = pyedflib.EdfReader(edfFilename)
+        used_file = self.edf
+        Index = used_file.getSignalLabels()
+        
+        Translate = {}
+        Channel_recognition = ['C3', 'C4', 'O1', 'O2', 'EOG', 'hin', 'CHIN']
+        chinEMG_count = 0
+        for key in Index:
+            for ch in Channel_recognition:
+                if ch in key:
+                    if ch == 'EOG':
+                        if any([('1' in key), ('l' in key), ('L' in key)]):
+                            print('found EOG-L as: ' + key)
+                            Translate['EOG-L'] = key
+                        elif any([('2' in key), ('r' in key), ('R' in key)]):
+                            print('found EOG-R as: ' + key)
+                            Translate['EOG-R'] = key
+                        else:
+                            print('found unrecognisable EOG!')
+                            pdb.set_trace()
+                    elif ch=='O2':
+                        if 'S' not in key:
+                            if 'A1' in key or 'M1' in key:
+                               print('fount referenced EEG ' + key)
+                               Translate['O2_ref'] = key
+                            else:
+                               check = 0
+                               for key2 in List:
+                                  if 'A1' in key2 or 'M1' in key2:
+                                     check = check +1
+                                     print('found EEG channel ' + key + ' and reference channel ' + key2)
+                                     Translate['O2_unr'] = key
+                                     Translate['A1/M1'] = key2
+                                  else:
+                                     continue
+                               if check==0:
+                                  print('found EEG channel O2 as ' + key + ' but no reference')
+                                  Translate['O2_ref'] = key
+                    elif ch=='C3' or ch=='O1':
+                       if 'A2' in key or 'M2' in key:
+                           print('found referenced EEG: ' + key)
+                          Translate[ch + '_ref'] = key
+                       else:
+                          check = 0
+                          for key2 in List:
+                             if 'A2' in key2 or 'M2' in key2:
+                                check = check +1
+                                print('found EEG channel ' + key + ' and reference channel ' + key2)
+                                Translate[ch + '_unr'] = key
+                                Translate['A2/M2'] = key2
+                             else:
+                                continue
+                          if check==0:
+                                print('found EEG channel ' + ch + ' as ' + key + ' but no reference')
+                                Translate[ch + '_ref'] = key
+                    elif ch=='C4':
+                       if 'A1' in key or 'M1' in key:
+                          print('found referenced EEG ' + key)
+                          Translate['C4_ref'] = key
+                       else:
+                          check = 0
+                          for key2 in List:
+                             if 'A1' in key2 or 'M1' in key2:
+                                check = check + 1
+                                print('found EEG channel ' + key + ' and reference channel ' + key2)
+                                Translate['C4_unr'] = key
+                                Translate['A1/M1'] = key2
+                             else:
+                                continue
+                          if check==0:
+                                print('found EEG channel ' + key + ' and reference channel ' + key2)
+                                Translate['C4_ref'] = key
+                    elif ch=='hin' or ch=='CHIN':
+                        chinEMG_count = chinEMG_count + 1
+                        print('found chin-EMG channel as: ' + key)
+                        Translate['EMG'] = key
+                    else:
+                        print('found ' + ch + ' as: ' + key)
+                        print('showing full list so far: ' + Translate)
+                        pdb.set_trace()
+        if chinEMG_count==0:
+                    for key in Index:
+                        if 'EMG' in key:
+                            print('found EMG channel ' + key)
+                            Translate['EMG'] = key
 
-                self.loaded_channels[ch] = self.edf.readSignal(self.channels_used[ch])
-                if self.edf.getPhysicalDimension(self.channels_used[ch]).lower() == 'mv':
+        EEG_list = ['C3','C4','O1','O2']
+        for entry in Translate:
+            for eeg_ch in EEG_list:
+                if eeg_ch in entry: 
+                   if 'unr' in entry:
+                      try:
+                          if '1' in entry or '3' in entry:
+                             CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A2/M2'])))
+                          else:
+                             CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A1/M1']))) 
+                          Deck[eeg_ch] = CH
+                          dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+                          Dimension[eeg_ch] = dim_ch
+                          fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+                          Frequenz[eeg_ch] = fr_ch
+                          
+                      except:
+                          pass
+                   else:
+                        try:
+                            CH = used_file.readSignal(Index.index(Translate[entry]))
+                            Deck[eeg_ch] = CH
+                            dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+                            Dimension[eeg_ch] = dim_ch
+                            fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+                            Frequenz[eeg_ch] = fr_ch
+                            
+                        except:
+                           pass
+                else:
+                    try:                                                                              
+                        CH = used_file.readSignal(Index.index(Translate[entry]))                      
+                        Deck[entry] = CH                                                             
+                        dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+                        Dimension[entry] = dim_ch                                                    
+                        fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))         
+                        Frequenz[entry] = fr_ch                                                      
+                    except:                                                                           
+                           pass                                                                           
+                  
+        marker = []
+        for ch in Deck:
+            if 'ref' in ch or 'unr' in ch:
+                marker.append(ch)
+        for marked in marker:
+            del Deck[marked]
+        for ch in Deck:
+            print('Loading', ch)
+            self.loaded_channels[ch] = Deck[ch]
+            if Dimension[ch] == 'mv' :
                     myprint('mv')
                     self.loaded_channels[ch] *= 1e3
-                elif self.edf.getPhysicalDimension(self.channels_used[ch]).lower() == 'v':
+            elif Dimension[ch] == 'v' :
                     myprint('v')
                     self.loaded_channels[ch] *= 1e6
 
-                fs = int(self.edf.samplefrequency(self.channels_used[ch]))
-                # fs = Decimal(fs).quantize(Decimal('.0001'), rounding=ROUND_DOWN)
-                print('fs', fs)
+            fs = Frequenz[ch]
+            print('fs', fs)
 
-                self.resampling(ch, fs)
-                print('Resampling done')
+            self.resampling(ch, fs)
+            print('Resampling done')
 
-                # Trim excess
-#                self.trim(ch)
-
-            else:
-                print('channel[', ch, '] was empty (skipped)', sep='')
-                del self.channels_used[ch]
 
     def trim(self, ch):
         # 30 represents the epoch length most often used in standard hypnogram scoring.
@@ -281,8 +409,7 @@ class Hypnodensity(object):
         Fh = signal.butter(5, self.fsH / (fs / 2), btype='highpass', output='ba')
         Fl = signal.butter(5, self.fsL / (fs / 2), btype='lowpass', output='ba')
 
-        for ch, ch_idx in self.channels_used.items():
-            if ch_idx:
+        for ch in self.loaded_channels:
                 myprint('Filtering {}'.format(ch))
                 self.loaded_channels[ch] = signal.filtfilt(Fh[0], Fh[1], self.loaded_channels[ch])
 
@@ -317,23 +444,30 @@ class Hypnodensity(object):
         # Only need to check noise levels when we have two central or occipital channels
         # which we should then compare for quality and take the best one.  We can test this
         # by first checking if there is a channel category 'C4' or 'O2'
-        hasC4 = self.channels_used.get('C4')
-        hasO2 = self.channels_used.get('O2')
-
-        if hasC4 or hasO2:
+        hasC4 = self.loaded_channels.get('C4')
+        hasC3 = self.loaded_channels.get('C3')
+        hasO2 = self.loaded_channels.get('O2')
+        hasO1 = self.loaded_channels.get('O1')
+        pdb.set_trace()
+        if all(['C4' in self.loaded_channels, 'C3' in self.loaded_channels]):
             noiseM = sio.loadmat(self.config.psg_noise_file_pathname, squeeze_me=True)['noiseM']
             meanV = noiseM['meanV'].item()  # 0 for Central,    idx_central = 0
             covM = noiseM['covM'].item()    # 1 for Occipital,  idx_occipital = 1
 
-            if hasC4:
-                centrals_idx = 0
-                unused_ch = self.get_loudest_channel(['C3','C4'],meanV[centrals_idx], covM[centrals_idx])
-                del self.channels_used[unused_ch]
+            #if hasC4:
+            centrals_idx = 0
+            unused_ch = self.get_loudest_channel(['C3','C4'],meanV[centrals_idx], covM[centrals_idx])
+            del self.loaded_channels[unused_ch]
 
-            if hasO2:
-                occipitals_idx = 1
-                unused_ch = self.get_loudest_channel(['O1','O2'],meanV[occipitals_idx], covM[occipitals_idx])
-                del self.channels_used[unused_ch]
+
+
+        if all(['O2' in self.loaded_channels, 'O1' in self.loaded_channels]):
+            noiseM = sio.loadmat(self.config.psg_noise_file_pathname, squeeze_me=True)['noiseM']
+            meanV = noiseM['meanV'].item()  # 0 for Central,    idx_central = 0
+            covM = noiseM['covM'].item()    # 1 for Occipital,  idx_occipital = 1
+            occipitals_idx = 1
+            unused_ch = self.get_loudest_channel(['O1','O2'],meanV[occipitals_idx], covM[occipitals_idx])
+            del self.loaded_channels[unused_ch]
 
 
     def get_loudest_channel(self, channelTags, meanV, covM):
