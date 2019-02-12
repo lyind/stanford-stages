@@ -265,7 +265,7 @@ class Hypnodensity(object):
                                Translate['O2_ref'] = key
                             else:
                                check = 0
-                               for key2 in List:
+                               for key2 in Index:
                                   if 'A1' in key2 or 'M1' in key2:
                                      check = check +1
                                      print('found EEG channel ' + key + ' and reference channel ' + key2)
@@ -278,11 +278,11 @@ class Hypnodensity(object):
                                   Translate['O2_ref'] = key
                     elif ch=='C3' or ch=='O1':
                        if 'A2' in key or 'M2' in key:
-                           print('found referenced EEG: ' + key)
+                          print('found referenced EEG: ' + key)
                           Translate[ch + '_ref'] = key
                        else:
                           check = 0
-                          for key2 in List:
+                          for key2 in Index:
                              if 'A2' in key2 or 'M2' in key2:
                                 check = check +1
                                 print('found EEG channel ' + key + ' and reference channel ' + key2)
@@ -299,7 +299,7 @@ class Hypnodensity(object):
                           Translate['C4_ref'] = key
                        else:
                           check = 0
-                          for key2 in List:
+                          for key2 in Index:
                              if 'A1' in key2 or 'M1' in key2:
                                 check = check + 1
                                 print('found EEG channel ' + key + ' and reference channel ' + key2)
@@ -366,7 +366,7 @@ class Hypnodensity(object):
                   
         marker = []
         for ch in Deck:
-            if 'ref' in ch or 'unr' in ch:
+            if 'ref' in ch or 'unr' in ch or 'A' in ch:
                 marker.append(ch)
         for marked in marker:
             del Deck[marked]
@@ -385,6 +385,9 @@ class Hypnodensity(object):
 
             self.resampling(ch, fs)
             print('Resampling done')
+        print('check self.loaded_channels')
+        print(self.loaded_channels.keys())
+        pdb.set_trace()
 
 
     def trim(self, ch):
