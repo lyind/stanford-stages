@@ -205,17 +205,21 @@ class Hypnodensity(object):
         enc = []
 
  ###       for c in self.channels_used: # Central, Occipital, EOG-L, EOG-R, chin
-        for c in self.loaded_channels:
-            # append autocorrelations
-            enc.append(encode_data(self.loaded_channels[c], self.loaded_channels[c], self.CCsize[c], 0.25, self.fs))
+        Order = ['C3','C4','O1','O2','EOG-L','EOG-R', 'EMG']
+        for c in Order:
+            if c in self.loaded_channels:
+                # append autocorrelations
+                enc.append(encode_data(self.loaded_channels[c], self.loaded_channels[c], self.CCsize[c], 0.25, self.fs))
 
         # Append eog cross correlation
         enc.append(encode_data(self.loaded_channels['EOG-L'], self.loaded_channels['EOG-R'], self.CCsize['EOG-L'], 0.25, self.fs))
         min_length = np.min([x.shape[1] for x in enc])
         enc = [v[:, :min_length] for v in enc]
         # Central, Occipital, EOG-L, EOG-R, EOG-L/R, chin
-        enc = np.concatenate([enc[2], enc[3], enc[0], enc[1], enc[5], enc[4]], axis=0)
+        enc = np.concatenate([enc[0], enc[1], enc[2], enc[3], enc[5], enc[4]], axis=0)
         self.encodedD = enc
+#        print('check the ncoded data')
+#       pdb.set_trace()
 
         # Needs double checking as magic numbers are problematic here and will vary based on configuration settings.  @hyatt 11/12/2018
         # Currently, this is not supported as an input json parameter, but will need to adjust accordingly if this changes.
@@ -249,15 +253,38 @@ class Hypnodensity(object):
             for ch in Channel_recognition:
                 if ch in key:
                     if ch == 'EOG':
-                        if any([('1' in key), ('l' in key), ('L' in key)]):
-                            print('found EOG-L as: ' + key)
-                            Translate['EOG-L'] = key
-                        elif any([('2' in key), ('r' in key), ('R' in key)]):
-                            print('found EOG-R as: ' + key)
-                            Translate['EOG-R'] = key
+                        if 'A1' in key or 'M1' in key:
+                            print('found referenced EOG-R: ' + key)
+                            Translate['EOG-R_ref'] = key
+                        elif 'A2' in  key or 'M2' in key:
+                            print('found referenced EOG-L: ' + key)
+                            Translate['EOG-L_ref'] = key
                         else:
-                            print('found unrecognisable EOG!')
-                            pdb.set_trace()
+                            if any([('1' in key), ('l' in key), ('L' in key)]):
+                                check =0
+                                for key2 in Index:
+                                    if 'A2' in key2 or 'M2' in key2:
+                                        check = check +1
+                                        print('found EOG-L: ' + key + ' and reference channel: ' + key2)
+                                        Translate['EOG-L_unr'] = key
+                                        Translate['A2/M2'] = key2
+                                if check==0:
+                                    print('found EOG-L as: ' + key + ' but no reference channel')
+                                    Translate['EOG-L_ref'] = key
+                            elif any([('2' in key), ('r' in key), ('R' in key)]):
+                                check = 0
+                                for key2 in Index:
+                                    if 'A1' in key2 or 'M1' in key2:
+                                        check = check +1
+                                        print('found EOG-R: ' + key + ' and reference channel: ' + key2)
+                                        Translate['EOG-R_unr'] = key
+                                        Translate['A1/M1'] = key2
+                                if check==0:
+                                    print('found EOG-R as: ' + key + ' but no reference channel')
+                                    Translate['EOG-R_ref'] = key
+                            else:
+                                print('found unrecognisable EOG!')
+                                pdb.set_trace()
                     elif ch=='O2':
                         if 'S' not in key:
                             if 'A1' in key or 'M1' in key:
@@ -324,13 +351,15 @@ class Hypnodensity(object):
                             print('found EMG channel ' + key)
                             Translate['EMG'] = key
 
-        EEG_list = ['C3','C4','O1','O2']
+        EEG_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R']
+ #       print('start of channels extraction')
+ #       pdb.set_trace()
         for entry in Translate:
             for eeg_ch in EEG_list:
                 if eeg_ch in entry: 
                    if 'unr' in entry:
                       try:
-                          if '1' in entry or '3' in entry:
+                          if '1' in entry or '3' in entry or 'L' in entry:
                              CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A2/M2'])))
                           else:
                              CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A1/M1']))) 
@@ -339,7 +368,8 @@ class Hypnodensity(object):
                           Dimension[eeg_ch] = dim_ch
                           fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
                           Frequenz[eeg_ch] = fr_ch
-                          
+#                          print('gained channel: ' + entry + ' check CH or Deck[' + entry +']')
+#                          pdb.set_trace()
                       except:
                           pass
                    else:
