@@ -247,159 +247,321 @@ class Hypnodensity(object):
         Index = used_file.getSignalLabels()
         
         Translate = {}
-        Channel_recognition = ['C3', 'C4', 'O1', 'O2', 'EOG', 'hin', 'CHIN']
-        chinEMG_count = 0
-        for key in Index:
-            for ch in Channel_recognition:
-                if ch in key:
-                    if ch == 'EOG':
-                        if 'A1' in key or 'M1' in key:
-                            print('found referenced EOG-R: ' + key)
-                            Translate['EOG-R_ref'] = key
-                        elif 'A2' in  key or 'M2' in key:
-                            print('found referenced EOG-L: ' + key)
-                            Translate['EOG-L_ref'] = key
-                        else:
-                            if any([('1' in key), ('l' in key), ('L' in key)]):
-                                check =0
-                                for key2 in Index:
-                                    if 'A2' in key2 or 'M2' in key2:
-                                        check = check +1
-                                        print('found EOG-L: ' + key + ' and reference channel: ' + key2)
-                                        Translate['EOG-L_unr'] = key
-                                        Translate['A2/M2'] = key2
-                                if check==0:
-                                    print('found EOG-L as: ' + key + ' but no reference channel')
-                                    Translate['EOG-L_ref'] = key
-                            elif any([('2' in key), ('r' in key), ('R' in key)]):
-                                check = 0
-                                for key2 in Index:
-                                    if 'A1' in key2 or 'M1' in key2:
-                                        check = check +1
-                                        print('found EOG-R: ' + key + ' and reference channel: ' + key2)
-                                        Translate['EOG-R_unr'] = key
-                                        Translate['A1/M1'] = key2
-                                if check==0:
-                                    print('found EOG-R as: ' + key + ' but no reference channel')
-                                    Translate['EOG-R_ref'] = key
-                            else:
-                                print('found unrecognisable EOG!')
-                                pdb.set_trace()
-                    elif ch=='O2':
-                        if 'S' not in key:
-                            if 'A1' in key or 'M1' in key:
-                               print('fount referenced EEG ' + key)
-                               Translate['O2_ref'] = key
-                            else:
-                               check = 0
-                               for key2 in Index:
-                                  if 'A1' in key2 or 'M1' in key2:
-                                     check = check +1
-                                     print('found EEG channel ' + key + ' and reference channel ' + key2)
-                                     Translate['O2_unr'] = key
-                                     Translate['A1/M1'] = key2
-                                  else:
-                                     continue
-                               if check==0:
-                                  print('found EEG channel O2 as ' + key + ' but no reference')
-                                  Translate['O2_ref'] = key
-                    elif ch=='C3' or ch=='O1':
-                       if 'A2' in key or 'M2' in key:
-                          print('found referenced EEG: ' + key)
-                          Translate[ch + '_ref'] = key
-                       else:
-                          check = 0
-                          for key2 in Index:
-                             if 'A2' in key2 or 'M2' in key2:
-                                check = check +1
-                                print('found EEG channel ' + key + ' and reference channel ' + key2)
-                                Translate[ch + '_unr'] = key
-                                Translate['A2/M2'] = key2
-                             else:
-                                continue
-                          if check==0:
-                                print('found EEG channel ' + ch + ' as ' + key + ' but no reference')
-                                Translate[ch + '_ref'] = key
-                    elif ch=='C4':
-                       if 'A1' in key or 'M1' in key:
-                          print('found referenced EEG ' + key)
-                          Translate['C4_ref'] = key
-                       else:
-                          check = 0
-                          for key2 in Index:
-                             if 'A1' in key2 or 'M1' in key2:
-                                check = check + 1
-                                print('found EEG channel ' + key + ' and reference channel ' + key2)
-                                Translate['C4_unr'] = key
-                                Translate['A1/M1'] = key2
-                             else:
-                                continue
-                          if check==0:
-                                print('found EEG channel ' + key + ' and reference channel ' + key2)
-                                Translate['C4_ref'] = key
-                    elif ch=='hin' or ch=='CHIN':
-                        chinEMG_count = chinEMG_count + 1
-                        print('found chin-EMG channel as: ' + key)
-                        Translate['EMG'] = key
-                    else:
-                        print('found ' + ch + ' as: ' + key)
-                        print('showing full list so far: ' + Translate)
-                        pdb.set_trace()
-        if chinEMG_count==0:
-                    for key in Index:
-                        if 'EMG' in key:
-                            print('found EMG channel ' + key)
-                            Translate['EMG'] = key
 
-        EEG_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R']
+       
+
+
+        reference_channels = {'C3': {'A2', 'M2'}, 'C4': {'A1', 'M1'}, 'O1': {'A2', 'M2'}, 'O2': {'A1', 'M1'}, 'EOG': {'A2', 'M2','A1', 'M1'}}
+        
+#        for key in index:
+#            if 'EOG' in key:
+#                if any([('1' in key), ('l' in key), ('L' in key)]):
+#                    reference_channels['EOG-L'] = {'A2', 'M2','A1', 'M1'}
+#                elif any([('2' in key), ('r' in key), ('R' in key)]):
+#                    reference_channels['EOG-L'] = {'A2', 'M2','A1', 'M1'}
+
+        chinEMGcheck = 0
+        for key in Index:
+            for ch in reference_channels:
+                if ch in key:
+#                    if ch == 'EOG':
+#                        if 'A1' in key or 'M1' in key:
+#                            print('found EOG-R as: ' + key)
+#                            Translate['EOG-R'] = key
+#                        elif 'A2' in key or 'M2' in key:
+#                            print('found EOG-L as: ' + key)
+#                            Translate['EOG-L'] = key
+#                        else:
+#                            if any([('1' in key), ('l' in key), ('L' in key)]):
+#                                check =0
+#                                for key2 in Index:
+#                                    if 'A2' in key2 or 'M2' in key2:
+#                                        check = check +1
+#                                        print('found EOG-L: ' + key + ' and reference channel: ' + key2)
+#                                        Translate['EOG-L_unreferenced'] = key
+#                                        Translate['EOG-L_Reference'] = key2
+#                                if check==0:
+#                                    print('found EOG-L as: ' + key + ' but no reference channel')
+#                                    Translate['EOG-L'] = key
+#                            elif any([('2' in key), ('r' in key), ('R' in key)]):
+#                                check = 0
+#                                for key2 in Index:
+#                                    if 'A1' in key2 or 'M1' in key2:
+#                                        check = check +1
+#                                        print('found EOG-R: ' + key + ' and reference channel: ' + key2)
+#                                        Translate['EOG-R_unreferenced'] = key
+#                                        Translate['EOG-R_Reference'] = key2
+#                                if check==0:
+#                                    print('found EOG-R as: ' + key + ' but no reference channel')
+#                                    Translate['EOG-R'] = key
+#                            else:
+#                                print('found unrecognisable EOG!')
+#                                pdb.set_trace()
+#                    else:
+                        if 'S' not in key:
+                            found = 0
+                            for ref in reference_channels[ch]:
+                                
+                                if ref in key :
+                                    found = found +1
+                                    if ch == 'EOG':
+                                        if any([('EOG1' in key),('l' in key),('L' in key)]):
+                                            print('found EOG-L as : ' + key)
+                                            Translate['EOG-L'] = key 
+                                        elif any([('EOG2' in key),('r' in key),('R' in key)]):
+                                            print('found EOG-R as: ' + key)
+                                            Translate['EOG-R'] = key
+                                    else:
+                                        print('found referenced channel ' + ch + ' as: ' + key)
+                                        Translate[ch] = key
+                            if found ==0:
+                                for ref in reference_channels[ch]:
+                                    check = 0
+                                    for key2 in Index:
+                                        if ref in key2:
+                                            check = check +1
+                                            if ch == 'EOG':
+                                                if any([('EOG1' in key),('l' in key),('L' in key)]):
+                                                    print('found unreferenced EOG-L as : ' + key + ' and reference: ' + key2)
+                                                    Translate['EOG-L_unreferenced'] = key
+                                                    Translate['EOG-L_Reference'] = key2
+                                                elif any([('EOG2' in key),('r' in key),('R' in key)]):
+                                                    print('found unreferenced EOG-R as: ' + key + ' and reference: ' + key2)
+                                                    Translate['EOG-R_unreferenced'] = key
+                                                    Translate['EOG-R_Reference'] = key2
+                                            else:
+                                                print('found unreferenced channel ' + ch + ' as: ' + key + ' and reference channel: ' + key2)
+                                                Translate[ch + '_unreferenced'] = key
+                                                Translate[ch + '_Reference'] = key2
+ #                                       else:
+#                                            continue
+                                if check == 0:
+                                        if ch == 'EOG':
+                                            if any([('EOG1' in key),('l' in key),('L' in key)]):
+                                                print('found EOG-L as : ' + key + ' but no reference!')
+                                                Translate['EOG-L'] = key
+                                            elif any([('EOG2' in key),('r' in key),('R' in key)]):
+                                                print('found EOG-R as : ' + key + ' but no reference!')
+                                                Translate['EOG-R'] = key
+                                        else:
+                                            print('found channel: ' + key + ' but no mentioned reference!')
+                                            Translate[ch] = key
+                elif 'hin' in key or 'CHIN' in key:
+                    chinEMGcheck = chinEMGcheck +1
+                    print('found chin EMG as: ' + key)
+                    Translate['EMG'] = key
+                else:
+                    continue
+        if chinEMGcheck == 0:
+            for key in Index:
+                if 'EMG' in key:
+                    print('found EMG channel: ' + key)
+                    Translate['EMG'] = key
+
+        print('after collecting Translate')
+        print(Translate)
+        print('next step is comparing if some channels are already refferenced')
+        pdb.set_trace()
+
+        New_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R', 'EMG']
+        Takeout = []
+        for entry in Translate:
+            for new_ch in New_list:
+                if new_ch in entry and entry in new_ch:
+                    for other in Translate:
+                        if new_ch in other and other is not entry:
+                            Takeout.append(other)
+        for x in Takeout:
+            del Translate[x]
+        print('checking Translate after cleanup')
+        print(Translate)
+        pdb.set_trace
+
+        if 'O1' not in Translate and 'O2' not in Translate:
+            if 'C3' in Translate and 'C4' in Translate:
+                Translate['O1'] = Translate['C4']
+
+        for entry in Translate:
+            if 'Reference' not in entry:
+                for new_ch in New_list:
+                    if new_ch in entry:
+                        if 'unreferenced' in entry:
+                            try:
+                                if '1' in entry or '3' in entry or 'L' in entry:
+                                    CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate[new_ch + '_Reference'])))
+                                else:
+                                    CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate[new_ch + '_Reference'])))
+                                Deck[new_ch] = CH
+                                dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+                                Dimension[new_ch] = dim_ch
+                                fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+                                Frequenz[new_ch] = fr_ch
+                            except:
+                                pass
+                        else:
+                            try:
+                                CH = used_file.readSignal(Index.index(Translate[entry]))
+                                Deck[new_ch] = CH
+                                dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+                                Dimension[new_ch] = dim_ch
+                                fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+                                Frequenz[new_ch] = fr_ch
+                            except:
+                                pass
+
+#        Channel_recognition = ['C3', 'C4', 'O1', 'O2', 'EOG', 'hin', 'CHIN']
+#        chinEMG_count = 0
+#        for key in Index:
+#            for ch in Channel_recognition:
+#                if ch in key:
+#                    if ch == 'EOG':
+#                        if 'A1' in key or 'M1' in key:
+#                            print('found referenced EOG-R: ' + key)
+#                            Translate['EOG-R_ref'] = key
+#                        elif 'A2' in  key or 'M2' in key:
+#                            print('found referenced EOG-L: ' + key)
+#                            Translate['EOG-L_ref'] = key
+#                        else:
+#                            if any([('1' in key), ('l' in key), ('L' in key)]):
+#                                check =0
+#                                for key2 in Index:
+#                                    if 'A2' in key2 or 'M2' in key2:
+#                                        check = check +1
+#                                        print('found EOG-L: ' + key + ' and reference channel: ' + key2)
+#                                        Translate['EOG-L_unr'] = key
+#                                        Translate['A2/M2'] = key2
+#                                if check==0:
+#                                    print('found EOG-L as: ' + key + ' but no reference channel')
+#                                    Translate['EOG-L_ref'] = key
+#                            elif any([('2' in key), ('r' in key), ('R' in key)]):
+#                                check = 0
+#                                for key2 in Index:
+#                                    if 'A1' in key2 or 'M1' in key2:
+#                                        check = check +1
+#                                        print('found EOG-R: ' + key + ' and reference channel: ' + key2)
+#                                        Translate['EOG-R_unr'] = key
+#                                        Translate['A1/M1'] = key2
+#                                if check==0:
+#                                    print('found EOG-R as: ' + key + ' but no reference channel')
+#                                    Translate['EOG-R_ref'] = key
+#                            else:
+#                                print('found unrecognisable EOG!')
+#                                pdb.set_trace()
+#                    elif ch=='O2':
+#                        if 'S' not in key:
+#                            if 'A1' in key or 'M1' in key:
+#                               print('fount referenced EEG ' + key)
+#                               Translate['O2_ref'] = key
+#                            else:
+#                               check = 0
+#                               for key2 in Index:
+#                                  if 'A1' in key2 or 'M1' in key2:
+#                                     check = check +1
+#                                     print('found EEG channel ' + key + ' and reference channel ' + key2)
+#                                     Translate['O2_unr'] = key
+#                                     Translate['A1/M1'] = key2
+#                                  else:
+#                                     continue
+#                               if check==0:
+#                                  print('found EEG channel O2 as ' + key + ' but no reference')
+#                                  Translate['O2_ref'] = key
+#                    elif ch=='C3' or ch=='O1':
+#                       if 'A2' in key or 'M2' in key:
+#                          print('found referenced EEG: ' + key)
+#                          Translate[ch + '_ref'] = key
+#                       else:
+#                          check = 0
+#                          for key2 in Index:
+#                             if 'A2' in key2 or 'M2' in key2:
+#                                check = check +1
+#                                print('found EEG channel ' + key + ' and reference channel ' + key2)
+#                                Translate[ch + '_unr'] = key
+#                                Translate['A2/M2'] = key2
+#                             else:
+#                                continue
+#                          if check==0:
+#                                print('found EEG channel ' + ch + ' as ' + key + ' but no reference')
+#                                Translate[ch + '_ref'] = key
+#                    elif ch=='C4':
+#                       if 'A1' in key or 'M1' in key:
+#                          print('found referenced EEG ' + key)
+#                          Translate['C4_ref'] = key
+#                       else:
+#                          check = 0
+#                          for key2 in Index:
+#                             if 'A1' in key2 or 'M1' in key2:
+#                                check = check + 1
+#                                print('found EEG channel ' + key + ' and reference channel ' + key2)
+#                                Translate['C4_unr'] = key
+#                                Translate['A1/M1'] = key2
+#                             else:
+#                                continue
+#                          if check==0:
+#                                print('found EEG channel ' + key + ' and reference channel ' + key2)
+#                                Translate['C4_ref'] = key
+#                    elif ch=='hin' or ch=='CHIN':
+#                        chinEMG_count = chinEMG_count + 1
+#                        print('found chin-EMG channel as: ' + key)
+#                        Translate['EMG'] = key
+#                    else:
+#                        print('found ' + ch + ' as: ' + key)
+#                        print('showing full list so far: ' + Translate)
+#                        pdb.set_trace()
+#        if chinEMG_count==0:
+#                    for key in Index:
+#                        if 'EMG' in key:
+#                            print('found EMG channel ' + key)
+#                            Translate['EMG'] = key
+#
+#        EEG_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R']
  #       print('start of channels extraction')
  #       pdb.set_trace()
-        for entry in Translate:
-            for eeg_ch in EEG_list:
-                if eeg_ch in entry: 
-                   if 'unr' in entry:
-                      try:
-                          if '1' in entry or '3' in entry or 'L' in entry:
-                             CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A2/M2'])))
-                          else:
-                             CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A1/M1']))) 
-                          Deck[eeg_ch] = CH
-                          dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
-                          Dimension[eeg_ch] = dim_ch
-                          fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
-                          Frequenz[eeg_ch] = fr_ch
+#        for entry in Translate:
+#            for eeg_ch in EEG_list:
+#                if eeg_ch in entry: 
+#                   if 'unr' in entry:
+#                      try:
+#                          if '1' in entry or '3' in entry or 'L' in entry:
+#                             CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A2/M2'])))
+#                          else:
+#                             CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate['A1/M1']))) 
+#                          Deck[eeg_ch] = CH
+#                          dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+#                          Dimension[eeg_ch] = dim_ch
+#                          fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+#                          Frequenz[eeg_ch] = fr_ch
 #                          print('gained channel: ' + entry + ' check CH or Deck[' + entry +']')
 #                          pdb.set_trace()
-                      except:
-                          pass
-                   else:
-                        try:
-                            CH = used_file.readSignal(Index.index(Translate[entry]))
-                            Deck[eeg_ch] = CH
-                            dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
-                            Dimension[eeg_ch] = dim_ch
-                            fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
-                            Frequenz[eeg_ch] = fr_ch
-                            
-                        except:
-                           pass
-                else:
-                    try:                                                                              
-                        CH = used_file.readSignal(Index.index(Translate[entry]))                      
-                        Deck[entry] = CH                                                             
-                        dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
-                        Dimension[entry] = dim_ch                                                    
-                        fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))         
-                        Frequenz[entry] = fr_ch                                                      
-                    except:                                                                           
-                           pass                                                                           
-                  
-        marker = []
-        for ch in Deck:
-            if 'ref' in ch or 'unr' in ch or 'A' in ch:
-                marker.append(ch)
-        for marked in marker:
-            del Deck[marked]
+#                      except:
+#                          pass
+#                   else:
+#                        try:
+#                            CH = used_file.readSignal(Index.index(Translate[entry]))
+#                            Deck[eeg_ch] = CH
+#                            dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+#                            Dimension[eeg_ch] = dim_ch
+#                            fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+#                            Frequenz[eeg_ch] = fr_ch
+#                            
+#                        except:
+#                           pass
+#                else:
+#                    try:                                                                              
+#                        CH = used_file.readSignal(Index.index(Translate[entry]))                      
+#                        Deck[entry] = CH                                                             
+#                        dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+#                        Dimension[entry] = dim_ch                                                    
+#                        fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))         
+#                        Frequenz[entry] = fr_ch                                                      
+#                    except:                                                                           
+#                           pass                                                                           
+#                  
+#        marker = []
+#        for ch in Deck:
+#            if 'ref' in ch or 'unr' in ch or 'A' in ch:
+#                marker.append(ch)
+#        for marked in marker:
+#            del Deck[marked]
         for ch in Deck:
             print('Loading', ch)
             self.loaded_channels[ch] = Deck[ch]
