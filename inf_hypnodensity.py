@@ -268,8 +268,9 @@ class Hypnodensity(object):
                                     Translate[ch] = key
                             pdb.set_trace()
                             if found ==0:
+                                check = 0
                                 for ref in reference_channels[ch]:
-                                    check = 0
+                                    #check = 0
                                     for key2 in Index:
                                         if ref in key2:
                                             check = check +1
@@ -297,14 +298,16 @@ class Hypnodensity(object):
         if eog_l_check == 0:
             check = 0
             for key in Index:
-                for ref in EOG_channels['EOG']:
+                if 'EOG' in key:
+                    #for ref in EOG_channels['EOG']:
                     if any([('EOG1' in key),('l' in key),('L' in key)]):
-                        for key2 in Index:
-                            if ref in key2:
-                                check = check +1
-                                print('found unreferenced EOG-L as : ' + key + ' and reference: ' + key2)
-                                Translate['EOG-L_unreferenced'] = key
-                                Translate['EOG-L_Reference'] = key2
+                        for ref in EOG_channels['EOG']:
+                            for key2 in Index:
+                                if ref in key2:
+                                    check = check +1
+                                    print('found unreferenced EOG-L as : ' + key + ' and reference: ' + key2)
+                                    Translate['EOG-L_unreferenced'] = key
+                                    Translate['EOG-L_Reference'] = key2
                         if check == 0:
                             print('found EOG-L as : ' + key + ' but no reference!')
                             Translate['EOG-L'] = key
@@ -312,14 +315,16 @@ class Hypnodensity(object):
         if eog_r_check == 0:
             check = 0
             for key in Index:
-                for ref in EOG_channels['EOG']:
+                if 'EOG' in key:
+                    #for ref in EOG_channels['EOG']:
                     if any([('EOG2' in key),('r' in key),('R' in key)]):
-                        for key2 in Index:
-                            if ref in key2:
-                                check = check  + 1
-                                print('found unreferenced EOG-R as: ' + key + ' and reference: ' + key2)
-                                Translate['EOG-R_unreferenced'] = key
-                                Translate['EOG-R_Reference'] = key2
+                        for ref in EOG_channels['EOG']:
+                            for key2 in Index:
+                                if ref in key2:
+                                    check = check  + 1
+                                    print('found unreferenced EOG-R as: ' + key + ' and reference: ' + key2)
+                                    Translate['EOG-R_unreferenced'] = key
+                                    Translate['EOG-R_Reference'] = key2
                         if check ==0:
                             print('found EOG-R as : ' + key + ' but no reference!')
                             Translate['EOG-R'] = key
