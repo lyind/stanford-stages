@@ -284,13 +284,13 @@ class Hypnodensity(object):
         for key in Index:
             if 'EOG' in key:
                 for ref in EOG_channels['EOG']:
-                    if any([('EOG1' in key),('l' in key),('L' in key)]):
+                    if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
                         if ref in key:
                             eog_l_check = eog_l_check + 1
                             print('found EOG-L as : ' + key)
                             Translate['EOG-L'] = key
 
-                    elif any([('EOG2' in key),('r' in key),('R' in key)]):
+                    elif any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
                         if ref in key:
                             eog_r_check = eog_r_check +1
                             print('found EOG-R as: ' + key)
@@ -300,7 +300,7 @@ class Hypnodensity(object):
             for key in Index:
                 if 'EOG' in key:
                     #for ref in EOG_channels['EOG']:
-                    if any([('EOG1' in key),('l' in key),('L' in key)]):
+                    if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
                         for ref in EOG_channels['EOG']:
                             for key2 in Index:
                                 if ref in key2:
@@ -317,7 +317,7 @@ class Hypnodensity(object):
             for key in Index:
                 if 'EOG' in key:
                     #for ref in EOG_channels['EOG']:
-                    if any([('EOG2' in key),('r' in key),('R' in key)]):
+                    if any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
                         for ref in EOG_channels['EOG']:
                             for key2 in Index:
                                 if ref in key2:
@@ -374,10 +374,7 @@ class Hypnodensity(object):
                     if new_ch in entry:
                         if 'unreferenced' in entry:
                             try:
-                                if '1' in entry or '3' in entry or 'L' in entry:
-                                    CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate[new_ch + '_Reference'])))
-                                else:
-                                    CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate[new_ch + '_Reference'])))
+                                CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate[new_ch + '_Reference'])))
                                 Deck[new_ch] = CH
                                 dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
                                 Dimension[new_ch] = dim_ch
