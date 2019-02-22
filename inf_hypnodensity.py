@@ -248,10 +248,10 @@ class Hypnodensity(object):
 
        
 
-
+        New_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R', 'EMG']
         reference_channels = {'C3': {'A2', 'M2'}, 'C4': {'A1', 'M1'}, 'O1': {'A2', 'M2'}, 'O2': {'A1', 'M1'}}
         EOG_channels = {'EOG': {'A2', 'M2','A1', 'M1'}}
-
+        retitle = 0
         chinEMGcheck = 0
         eog_l_check = 0
         eog_r_check = 0
@@ -270,7 +270,6 @@ class Hypnodensity(object):
                             if found ==0:
                                 check = 0
                                 for ref in reference_channels[ch]:
-                                    #check = 0
                                     for key2 in Index:
                                         if ref in key2:
                                             check = check +1
@@ -299,7 +298,6 @@ class Hypnodensity(object):
             check = 0
             for key in Index:
                 if 'EOG' in key:
-                    #for ref in EOG_channels['EOG']:
                     if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
                         for ref in EOG_channels['EOG']:
                             for key2 in Index:
@@ -316,7 +314,6 @@ class Hypnodensity(object):
             check = 0
             for key in Index:
                 if 'EOG' in key:
-                    #for ref in EOG_channels['EOG']:
                     if any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
                         for ref in EOG_channels['EOG']:
                             for key2 in Index:
@@ -346,69 +343,65 @@ class Hypnodensity(object):
         print('next step is comparing if some channels are already refferenced')
         pdb.set_trace()
 
-        New_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R', 'EMG']
-        Takeout = []
         for entry in Translate:
-            for new_ch in New_list:
-                if new_ch in entry and entry in new_ch:
-                    for other in Translate:
-                        if new_ch in other and other is not entry:
-                            Takeout.append(other)
-        for x in Takeout:
-            del Translate[x]
-        print('checking Translate after cleanup')
-        print(Translate)
-        pdb.set_trace
-
-        retitle = 0
-        if 'O1' not in Translate and 'O2' not in Translate:
-            if 'C3' in Translate and 'C4' in Translate:
-                Translate['O1'] = Translate['C4']
-                retitle = retitle +1
-        if retitle > 0:
-            del Translate['C4']
-
-        for entry in Translate:
-            if 'Reference' not in entry:
-                for new_ch in New_list:
-                    if new_ch in entry:
-                        if 'unreferenced' in entry:
-                            try:
-                                CH = np.subtract(used_file.readSignal(Index.index(Translate[entry])),used_file.readSignal(Index.index(Translate[new_ch + '_Reference'])))
-                                Deck[new_ch] = CH
-                                dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
-                                Dimension[new_ch] = dim_ch
-                                fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
-                                Frequenz[new_ch] = fr_ch
-                            except:
-                                pass
-                        else:
-                            try:
-                                CH = used_file.readSignal(Index.index(Translate[entry]))
-                                Deck[new_ch] = CH
-                                dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
-                                Dimension[new_ch] = dim_ch
-                                fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
-                                Frequenz[new_ch] = fr_ch
-                            except:
-                                pass
-
-        for ch in Deck:
-            print('Loading', ch)
-            self.loaded_channels[ch] = Deck[ch]
+            CH = used_file.readSignal(Index.index(Translate[entry]))
+            self.loaded_channels[entry] = CH
+            dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
+            Dimension[entry] = dim_ch
+            fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
+            Frequenz[entry] = fr_ch
+        for ch in self.loaded_channels:
             if Dimension[ch] == 'mv' :
-                    myprint('mv')
-                    self.loaded_channels[ch] *= 1e3
+                myprint('mv')
+                self.loaded_channels[ch] *= 1e3
             elif Dimension[ch] == 'v' :
-                    myprint('v')
-                    self.loaded_channels[ch] *= 1e6
+                myprint('v')
+                self.loaded_channels[ch] *= 1e6
 
             fs = Frequenz[ch]
             print('fs', fs)
 
             self.resampling(ch, fs)
             print('Resampling done')
+        for entry in self.loaded_channels:
+            if 'Reference' not in entry:
+                if 'unreferenced' in entry:
+                    for new_ch in New_list:
+                        if new_ch in entry:
+                            CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
+                            Deck[new_ch] = CH
+
+
+        Takeout = []
+        for entry in self.loaded_channels:
+            for new_ch in New_list:
+                if new_ch in entry and entry in new_ch:
+                    for other in Translate:
+                        if new_ch in other and other is not entry:
+                            Takeout.append(other)
+
+        for x in Takeout:
+            del self.loaded_channels[x]
+
         print('check self.loaded_channels')
+        print(self.loaded_channels.keys())
+        pdb.set_trace()
+
+        for ch in Deck:
+            self.loaded_channels[ch] = Deck[ch]
+
+        print('check self.loaded_channels after adding Deck:')
+        print(self.loaded_channels.keys())
+        pdb.set_trace()
+
+        if 'O1' not in self.loaded_channels and 'O2' not in self.loaded_channels:
+            if 'C3' in self.loaded_channels and 'C4' in self.loaded_channels:
+                self.loaded_channels['O1'] = self.loaded_channels['C4']
+                retitle = retitle +1
+        if retitle > 0:
+            del self.loaded_channels['C4']
+
+        print('checking final result of self.loaded_channels:')
         print(self.loaded_channels.keys())
         pdb.set_trace()
 
