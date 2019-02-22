@@ -266,7 +266,7 @@ class Hypnodensity(object):
                                     found = found +1
                                     print('found referenced channel ' + ch + ' as: ' + key)
                                     Translate[ch] = key
-                            pdb.set_trace()
+#                            pdb.set_trace()
                             if found ==0:
                                 check = 0
                                 for ref in reference_channels[ch]:
@@ -338,11 +338,6 @@ class Hypnodensity(object):
                     print('found EMG channel: ' + key)
                     Translate['EMG'] = key
 
-        print('after collecting Translate')
-        print(Translate)
-        print('next step is comparing if some channels are already refferenced')
-        pdb.set_trace()
-
         for entry in Translate:
             CH = used_file.readSignal(Index.index(Translate[entry]))
             self.loaded_channels[entry] = CH
@@ -376,22 +371,11 @@ class Hypnodensity(object):
             if 'unreferenced' in entry or 'Reference' in entry:
                 Takeout.append(entry)
 
-        print('the list akeout now consits of:')
-        print(Takeout)
-        pdb.set_trace()
         for x in Takeout:
             del self.loaded_channels[x]
 
-        print('check self.loaded_channels')
-        print(self.loaded_channels.keys())
-        pdb.set_trace()
-
         for ch in Deck:
             self.loaded_channels[ch] = Deck[ch]
-
-        print('check self.loaded_channels after adding Deck:')
-        print(self.loaded_channels.keys())
-        pdb.set_trace()
 
         if 'O1' not in self.loaded_channels and 'O2' not in self.loaded_channels:
             if 'C3' in self.loaded_channels and 'C4' in self.loaded_channels:
