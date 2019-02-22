@@ -364,22 +364,21 @@ class Hypnodensity(object):
             self.resampling(ch, fs)
             print('Resampling done')
         for entry in self.loaded_channels:
-            if 'Reference' not in entry:
-                if 'unreferenced' in entry:
-                    for new_ch in New_list:
-                        if new_ch in entry:
-                            CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
-                            Deck[new_ch] = CH
+            if 'unreferenced' in entry:
+                for new_ch in New_list:
+                    if new_ch in entry:
+                        CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
+                        Deck[new_ch] = CH
 
 
         Takeout = []
         for entry in self.loaded_channels:
-            for new_ch in New_list:
-                if new_ch in entry and entry in new_ch:
-                    for other in Translate:
-                        if new_ch in other and other is not entry:
-                            Takeout.append(other)
+            if 'unreferenced' in entry or 'Reference' in entry:
+                Takeout.append(entry)
 
+        print('the list akeout now consits of:')
+        print(Takeout)
+        pdb.set_trace()
         for x in Takeout:
             del self.loaded_channels[x]
 
