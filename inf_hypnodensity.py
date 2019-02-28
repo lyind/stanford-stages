@@ -386,7 +386,7 @@ class Hypnodensity(object):
 
         print('checking final result of self.loaded_channels:')
         print(self.loaded_channels.keys())
-        pdb.set_trace()
+#        pdb.set_trace()
 
 
     def trim(self, ch):
