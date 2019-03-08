@@ -436,10 +436,11 @@ class Hypnodensity(object):
                 s = signal.dlti(numerator[1], [1], dt=1. / self.fs)
                 self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], fs // self.fs, ftype=s, zero_phase=False)
         else:
-            self.loaded_channels[ch] = signal.resample_poly(self.loaded_channels[ch],
-                                        self.fs, fs, axis=0, window=('kaiser', 5.0))
-
-    def run_data(dat, model, root_model_path):
+	    if fs % self.fs > 0:
+	        self.loaded_channels[ch] = signal.resample(self.loaded_channels[ch], int(len(self.loaded_channels[ch] / fs) * self.fs))
+	    else:
+                s = signal.dlti(numerator[0], [1], dt=1. / self.fs)
+	        self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], int(fs / self.fs), ftype=s, zero_phase=False)
 
     def psg_noise_level(self):
 
