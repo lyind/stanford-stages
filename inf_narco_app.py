@@ -17,7 +17,7 @@ warnings.simplefilter('ignore', FutureWarning)  # warnings.filterwarnings("ignor
 import scipy.io as sio
 
 import tensorflow as tf
-# import gpflow as gpf
+import gpflow as gpf
 import random
 
 # For hypnodensity plotting ...
@@ -69,18 +69,11 @@ def main(edfFilename,
         'chin_emg': 'EMG'
     }
 
-
-
-
-    Deck = {}
-    Dimension = {}
-    Frequenz = {}
-
     appConfig.lightsOff = configInput.get('lightsOff', [])
     appConfig.lightsOn = configInput.get('lightsOn', [])
+    appConfig.segsize = configInput.get('appConfig', {}).get('segsize', None)
 
     hyp = {'show': {}, 'save': {}, 'filename': {}}
-    hyp['edfProps'] = extractEdfProperties(edfFilename)
     hyp['show']['plot'] = False
     hyp['show']['hypnogram'] = False
     hyp['show']['hypnodensity'] = False
@@ -90,16 +83,20 @@ def main(edfFilename,
     hyp['save']['hypnogram'] = True
     hyp['save']['hypnodensity'] = True
     hyp['save']['diagnosis'] = True
+    hyp['save']['hypnogram_anl'] = False
 
     hyp['filename']['plot'] = changeFileExt(edfFilename, '.hypnodensity.png');
     hyp['filename']['hypnodensity'] = changeFileExt(edfFilename, '.hypnodensity.txt');
     hyp['filename']['hypnogram'] = changeFileExt(edfFilename, '.hypnogram.txt');
     hyp['filename']['diagnosis'] = changeFileExt(edfFilename, '.diagnosis.txt');
+    hyp['filename']['hypnogram_anl'] = changeFileExt(edfFilename, '.anl');
 
     hyp['save'].update(configInput.get('save', {}))
     hyp['show'].update(configInput.get('show', {}))
 
     hypnoConfig = hyp
+
+    hyp['show'].update(configInput.get('show', {}))
 
     narcoApp = NarcoApp(appConfig)
 
@@ -132,12 +129,30 @@ def main(edfFilename,
     if hypnoConfig['save']['diagnosis']:
         narcoApp.save_diagnosis(fileName=hypnoConfig['filename']['diagnosis'])
 
+    if hypnoConfig['save']['hynogram_anl']:
+        edfProps = extractEdfProperties(edfFilename)
+        starttime = edfProps['starttime']
+        narcoApp.save_hypnogram_anl(starttime, fileName=hypnoConfig['filename']['hypnogram_anl'])
+
     renderHypnodensity(narcoApp.get_hypnodensity(), showPlot=hypnoConfig['show']['plot'],
         savePlot=hypnoConfig['save']['plot'], fileName=hypnoConfig['filename']['plot'])
+
+
+def extractEdfProperties(edf_pathname):
+    edf = None
+    try:
+        edf = pyedflib.EdfReader(edf_pathname)
+    except OSError as osErr:
+        print("OSError:", "Loading", edf_pathname)
+        raise (osErr)
+
+    return { 'starttime': edf.getStartdatetime(), 'duration': edf.getFileDuration() }
+
 
 def changeFileExt(fullName, newExt):
     baseName, _ = os.path.splitext(fullName)
     return baseName + newExt
+
 
 def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='tmp.png'):
     fig, ax = plt.subplots(figsize=[11, 5])
@@ -147,22 +162,24 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
          [0.22, 0.44, 0.73],  # blue
          [0.34, 0.70, 0.39]]  # green
 
+    for i in range(4):
+        xy = np.zeros([av.shape[0] * 2, 2])
+        xy[:av.shape[0], 0] = np.arange(av.shape[0])
+        xy[av.shape[0]:, 0] = np.flip(np.arange(av.shape[0]), axis=0)
+
+        xy[:av.shape[0], 1] = av[:, i]
+        xy[av.shape[0]:, 1] = np.flip(av[:, i + 1], axis=0)
+
         poly = Polygon(xy, facecolor=C[i], edgecolor=None)
         ax.add_patch(poly)
 
-        plt.xlim([0, av.shape[0]])
+    plt.xlim([0, av.shape[0]])
+    # fig.savefig('test.png')
+    if savePlot:
+        fig.savefig(fileName)
+        # plt.savefig(fileName)
 
-        # fig.savefig('test.png')
-        if savePlot:
-            fig.savefig(fileName)
-            # plt.savefig(fileName)
-
-        if showPlot:
-            print("Showing hypnodensity")
-            plt.show()
-
-    if hypnoConfig['show']['plot']:
-        from inf_config import ACConfig
+    if showPlot:
         print("Showing hypnodensity - close figure to continue.")
         plt.show()
 
@@ -213,6 +230,22 @@ class NarcoApp(object):
 
         hypno = self.get_hypnogram()
         np.savetxt(fileName, hypno, delimiter=",", fmt='%i')
+
+    def save_hypnogram_anl(self, starttime, fileName=''):
+        if fileName == '':
+            fileName = changeFileExt(self.edf_path, '.anl')
+
+        with open(fileName, "wb") as anlFile:
+            print("Saving ANL file to " + fileName)
+            anl_stages = format_anl.transform_anl_aasm(self.get_hypnodensity())
+            # TODO possibly add "hypnoConfig.lightsOff"(offset in seconds) marker (network epoch 0 != EDF epoch 0?)
+            ts = starttime.timestamp()
+
+            if self.config.segsize is None:
+                raise 'AppConfig.segsize is required to export hypnogram to ANL format'
+
+            epoch_length_millies = self.config.segsize * 1000
+            format_anl.serialize_anl(anlFile, anl_stages, ts, epoch_length_millies)
 
     def get_narco_gpmodels(self):
 

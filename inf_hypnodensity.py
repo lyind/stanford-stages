@@ -12,7 +12,7 @@ import os  # for opening os files for pickle.
 import pickle
 from pathlib import Path
 
-import skimage
+import skimage_extract as skimage
 import numpy as np
 import pyedflib
 import pywt  # wavelet entropy
@@ -62,8 +62,8 @@ class Hypnodensity(object):
         self.lightsOff = appConfig.lightsOff
         self.lightsOn = appConfig.lightsOn
 
-        #self.edf = Deck
-        self.edf = []  # pyedflib.EdfFileReader
+        self.cached_hypnodensity = None
+
 
     def evaluate(self):
         p = Path(self.edf_pathname)
@@ -110,13 +110,16 @@ class Hypnodensity(object):
 
     # compacts hypnodensity, possibly from mutliple models, into one Mx5 probability matrix.
     def get_hypnodensity(self):
-        av = np.zeros(self.hypnodensity[0].shape)  # for example, 2144, 5)
+        if self.cached_hypnodensity is None:
+            av = np.zeros(self.hypnodensity[0].shape)  # for example, 2144, 5)
 
-        for i in range(len(self.hypnodensity)):
-            av += self.hypnodensity[i]
+            for i in range(len(self.hypnodensity)):
+                av += self.hypnodensity[i]
 
-        av = np.divide(av, len(self.hypnodensity))
-        return av
+            av = np.divide(av, len(self.hypnodensity))
+            self.cached_hypnodensity = av
+
+        return self.cached_hypnodensity
 
     # 0 is wake, 1 is stage-1, 2 is stage-2, 3 is stage 3/4, 5 is REM
     def get_hypnogram(self):
@@ -142,7 +145,7 @@ class Hypnodensity(object):
         slide = slide * self.fs
 
         # Creates 2D array of overlapping segments
-        D = skimage.util.view_as_windows(x, dim, dim).T
+        D = skimage.view_as_windows(x, dim, dim).T
 
         # Extract Hjorth params for each segment
         dD = np.diff(D, 1, axis=0)
@@ -178,8 +181,8 @@ class Hypnodensity(object):
             # Create 2D array of overlapping segments
             zero_vec = np.zeros(dim // 2)
             input2 = np.concatenate((zero_vec, x2, zero_vec))
-            D1 = skimage.util.view_as_windows(x1, dim, slide).T
-            D2 = skimage.util.view_as_windows(input2, dim * 2, slide).T
+            D1 = skimage.view_as_windows(x1, dim, slide).T
+            D2 = skimage.view_as_windows(input2, dim * 2, slide).T
             zero_mat = np.zeros((dim // 2, D1.shape[1]))
             D1 = np.concatenate([zero_mat, D1, zero_mat])
 
@@ -229,160 +232,151 @@ class Hypnodensity(object):
 
     def loadEDF(self):
         self.loaded_channels = {}
-        if not self.edf:
 
-            try:
-                self.edf = pyedflib.EdfReader(self.edf_pathname)
-            except OSError as osErr:
-                print("OSError:", "NayNay Loading", self.edf_pathname)
-                raise (osErr)
+        with pyedflib.EdfReader(self.edf_pathname) as edf:
 
-        Deck = {}
-        Dimension = {}
-        Frequenz = {}
-        #used_file = pyedflib.EdfReader(edfFilename)
-        used_file = self.edf
-        Index = used_file.getSignalLabels()
-        
-        Translate = {}
+            Deck = {}
+            Dimension = {}
+            Frequenz = {}
+            Index = edf.getSignalLabels()
+            
+            Translate = {}
 
-       
-
-        New_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R', 'EMG']
-        reference_channels = {'C3': {'A2', 'M2'}, 'C4': {'A1', 'M1'}, 'O1': {'A2', 'M2'}, 'O2': {'A1', 'M1'}}
-        EOG_channels = {'EOG': {'A2', 'M2','A1', 'M1'}}
-        retitle = 0
-        chinEMGcheck = 0
-        eog_l_check = 0
-        eog_r_check = 0
-        for ch in reference_channels:
-            found = 0
-            for key in Index:
-                if 'S' not in key:
-                        if ch in key:
-                            for ref in reference_channels[ch]:
-                                
-                                if ref in key:
-                                    found = found +1
-                                    print('found referenced channel ' + ch + ' as: ' + key)
-                                    Translate[ch] = key
-#                            pdb.set_trace()
-                            if found ==0:
-                                check = 0
+            New_list = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R', 'EMG']
+            reference_channels = {'C3': {'A2', 'M2'}, 'C4': {'A1', 'M1'}, 'O1': {'A2', 'M2'}, 'O2': {'A1', 'M1'}}
+            EOG_channels = {'EOG': {'A2', 'M2','A1', 'M1'}}
+            retitle = 0
+            chinEMGcheck = 0
+            eog_l_check = 0
+            eog_r_check = 0
+            for ch in reference_channels:
+                found = 0
+                for key in Index:
+                    if 'S' not in key:
+                            if ch in key:
                                 for ref in reference_channels[ch]:
-                                    for key2 in Index:
-                                        if ref in key2:
-                                            check = check +1
-                                            print('found unreferenced channel ' + ch + ' as: ' + key + ' and reference channel: ' + key2)
-                                            Translate[ch + '_unreferenced'] = key
-                                            Translate[ch + '_Reference'] = key2
-                                if check == 0:
-                                            print('found channel: ' + key + ' but no mentioned reference!')
-                                            Translate[ch] = key
-                
-        for key in Index:
-            if 'EOG' in key:
-                for ref in EOG_channels['EOG']:
-                    if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
-                        if ref in key:
-                            eog_l_check = eog_l_check + 1
-                            print('found EOG-L as : ' + key)
-                            Translate['EOG-L'] = key
-
-                    elif any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
-                        if ref in key:
-                            eog_r_check = eog_r_check +1
-                            print('found EOG-R as: ' + key)
-                            Translate['EOG-R'] = key
-        if eog_l_check == 0:
-            check = 0
+                                    
+                                    if ref in key:
+                                        found = found +1
+                                        print('found referenced channel ' + ch + ' as: ' + key)
+                                        Translate[ch] = key
+    #                            pdb.set_trace()
+                                if found ==0:
+                                    check = 0
+                                    for ref in reference_channels[ch]:
+                                        for key2 in Index:
+                                            if ref in key2:
+                                                check = check +1
+                                                print('found unreferenced channel ' + ch + ' as: ' + key + ' and reference channel: ' + key2)
+                                                Translate[ch + '_unreferenced'] = key
+                                                Translate[ch + '_Reference'] = key2
+                                    if check == 0:
+                                                print('found channel: ' + key + ' but no mentioned reference!')
+                                                Translate[ch] = key
+                    
             for key in Index:
                 if 'EOG' in key:
-                    if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
-                        for ref in EOG_channels['EOG']:
-                            for key2 in Index:
-                                if ref in key2:
-                                    check = check +1
-                                    print('found unreferenced EOG-L as : ' + key + ' and reference: ' + key2)
-                                    Translate['EOG-L_unreferenced'] = key
-                                    Translate['EOG-L_Reference'] = key2
-                        if check == 0:
-                            print('found EOG-L as : ' + key + ' but no reference!')
-                            Translate['EOG-L'] = key
+                    for ref in EOG_channels['EOG']:
+                        if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
+                            if ref in key:
+                                eog_l_check = eog_l_check + 1
+                                print('found EOG-L as : ' + key)
+                                Translate['EOG-L'] = key
 
-        if eog_r_check == 0:
-            check = 0
+                        elif any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
+                            if ref in key:
+                                eog_r_check = eog_r_check +1
+                                print('found EOG-R as: ' + key)
+                                Translate['EOG-R'] = key
+            if eog_l_check == 0:
+                check = 0
+                for key in Index:
+                    if 'EOG' in key:
+                        if any([('EOG1' in key),('E1' in key),('l' in key),('L' in key)]):
+                            for ref in EOG_channels['EOG']:
+                                for key2 in Index:
+                                    if ref in key2:
+                                        check = check +1
+                                        print('found unreferenced EOG-L as : ' + key + ' and reference: ' + key2)
+                                        Translate['EOG-L_unreferenced'] = key
+                                        Translate['EOG-L_Reference'] = key2
+                            if check == 0:
+                                print('found EOG-L as : ' + key + ' but no reference!')
+                                Translate['EOG-L'] = key
+
+            if eog_r_check == 0:
+                check = 0
+                for key in Index:
+                    if 'EOG' in key:
+                        if any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
+                            for ref in EOG_channels['EOG']:
+                                for key2 in Index:
+                                    if ref in key2:
+                                        check = check  + 1
+                                        print('found unreferenced EOG-R as: ' + key + ' and reference: ' + key2)
+                                        Translate['EOG-R_unreferenced'] = key
+                                        Translate['EOG-R_Reference'] = key2
+                            if check ==0:
+                                print('found EOG-R as : ' + key + ' but no reference!')
+                                Translate['EOG-R'] = key
+
+            
             for key in Index:
-                if 'EOG' in key:
-                    if any([('EOG2' in key),('E2' in key),('r' in key),('R' in key)]):
-                        for ref in EOG_channels['EOG']:
-                            for key2 in Index:
-                                if ref in key2:
-                                    check = check  + 1
-                                    print('found unreferenced EOG-R as: ' + key + ' and reference: ' + key2)
-                                    Translate['EOG-R_unreferenced'] = key
-                                    Translate['EOG-R_Reference'] = key2
-                        if check ==0:
-                            print('found EOG-R as : ' + key + ' but no reference!')
-                            Translate['EOG-R'] = key
+                if 'hin' in key or 'CHIN' in key:
+                        chinEMGcheck = chinEMGcheck +1
+                        print('found chin EMG as: ' + key)
+                        Translate['EMG'] = key
+            if chinEMGcheck == 0:
+                for key in Index:
+                    if 'EMG' in key:
+                        print('found EMG channel: ' + key)
+                        Translate['EMG'] = key
 
-        
-        for key in Index:
-            if 'hin' in key or 'CHIN' in key:
-                    chinEMGcheck = chinEMGcheck +1
-                    print('found chin EMG as: ' + key)
-                    Translate['EMG'] = key
-        if chinEMGcheck == 0:
-            for key in Index:
-                if 'EMG' in key:
-                    print('found EMG channel: ' + key)
-                    Translate['EMG'] = key
+            for entry in Translate:
+                CH = edf.readSignal(Index.index(Translate[entry]))
+                self.loaded_channels[entry] = CH
+                dim_ch = edf.getPhysicalDimension(Index.index(Translate[entry])).lower()
+                Dimension[entry] = dim_ch
+                fr_ch = int(edf.samplefrequency(Index.index(Translate[entry])))
+                Frequenz[entry] = fr_ch
+            for ch in self.loaded_channels:
+                if Dimension[ch] == 'mv' :
+                    myprint('mv')
+                    self.loaded_channels[ch] *= 1e3
+                elif Dimension[ch] == 'v' :
+                    myprint('v')
+                    self.loaded_channels[ch] *= 1e6
 
-        for entry in Translate:
-            CH = used_file.readSignal(Index.index(Translate[entry]))
-            self.loaded_channels[entry] = CH
-            dim_ch = used_file.getPhysicalDimension(Index.index(Translate[entry])).lower()
-            Dimension[entry] = dim_ch
-            fr_ch = int(used_file.samplefrequency(Index.index(Translate[entry])))
-            Frequenz[entry] = fr_ch
-        for ch in self.loaded_channels:
-            if Dimension[ch] == 'mv' :
-                myprint('mv')
-                self.loaded_channels[ch] *= 1e3
-            elif Dimension[ch] == 'v' :
-                myprint('v')
-                self.loaded_channels[ch] *= 1e6
+                fs = Frequenz[ch]
+                print('fs', fs)
 
-            fs = Frequenz[ch]
-            print('fs', fs)
-
-            self.resampling(ch, fs)
-            print('Resampling done')
-        for entry in self.loaded_channels:
-            if 'unreferenced' in entry:
-                for new_ch in New_list:
-                    if new_ch in entry:
-                        CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
-                        Deck[new_ch] = CH
+                self.resampling(ch, fs)
+                print('Resampling done')
+            for entry in self.loaded_channels:
+                if 'unreferenced' in entry:
+                    for new_ch in New_list:
+                        if new_ch in entry:
+                            CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
+                            Deck[new_ch] = CH
 
 
-        Takeout = []
-        for entry in self.loaded_channels:
-            if 'unreferenced' in entry or 'Reference' in entry:
-                Takeout.append(entry)
+            Takeout = []
+            for entry in self.loaded_channels:
+                if 'unreferenced' in entry or 'Reference' in entry:
+                    Takeout.append(entry)
 
-        for x in Takeout:
-            del self.loaded_channels[x]
+            for x in Takeout:
+                del self.loaded_channels[x]
 
-        for ch in Deck:
-            self.loaded_channels[ch] = Deck[ch]
+            for ch in Deck:
+                self.loaded_channels[ch] = Deck[ch]
 
-        if 'O1' not in self.loaded_channels and 'O2' not in self.loaded_channels:
-            if 'C3' in self.loaded_channels and 'C4' in self.loaded_channels:
-                self.loaded_channels['O1'] = self.loaded_channels['C4']
-                retitle = retitle +1
-        if retitle > 0:
-            del self.loaded_channels['C4']
+            if 'O1' not in self.loaded_channels and 'O2' not in self.loaded_channels:
+                if 'C3' in self.loaded_channels and 'C4' in self.loaded_channels:
+                    self.loaded_channels['O1'] = self.loaded_channels['C4']
+                    retitle = retitle +1
+            if retitle > 0:
+                del self.loaded_channels['C4']
 
         print('checking final result of self.loaded_channels:')
         print(self.loaded_channels.keys())
@@ -395,14 +389,6 @@ class Hypnodensity(object):
         # Otherwise, if rem == 0, the following results in an empty array
         if rem>0:
             self.loaded_channels[ch] = self.loaded_channels[ch][:-rem]
-
-    def loadHeader(self):
-        if not self.edf:
-            print(self.edf_pathname)
-            self.edf = pyedflib.EdfReader(self.edf_pathname)
-
-        signal_labels = self.edf.getSignalLabels()
-        return signal_labels
 
     def filtering(self):
         myprint('Filtering remaining signals')
@@ -436,11 +422,11 @@ class Hypnodensity(object):
                 s = signal.dlti(numerator[1], [1], dt=1. / self.fs)
                 self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], fs // self.fs, ftype=s, zero_phase=False)
         else:
-	    if fs % self.fs > 0:
-	        self.loaded_channels[ch] = signal.resample(self.loaded_channels[ch], int(len(self.loaded_channels[ch] / fs) * self.fs))
-	    else:
+            if (fs % self.fs) > 0:
+                self.loaded_channels[ch] = signal.resample(self.loaded_channels[ch], int(int(len(self.loaded_channels[ch]) / fs) * self.fs))
+            else:
                 s = signal.dlti(numerator[0], [1], dt=1. / self.fs)
-	        self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], int(fs / self.fs), ftype=s, zero_phase=False)
+                self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], int(int(fs) / int(self.fs)), ftype=s, zero_phase=False)
 
     def psg_noise_level(self):
 
@@ -496,16 +482,19 @@ class Hypnodensity(object):
             noise_vec[k] = np.sqrt(np.dot(np.dot(np.transpose(x), sigma), x))
             return np.mean(noise_vec)
 
-    def run_data(dat, model, root_model_path):
+    def run_data(dat, model, root_model_path, segsize):
 
-        ac_config = ACConfig(model_name=model, is_training=False, root_model_dir=root_model_path)
+        ac_config = ACConfig(model_name=model, is_training=False, root_model_dir=root_model_path, segsize_override=segsize)
         hyp = Hypnodensity.run(dat, ac_config)
         return hyp
+
+    def get_acconfig(self):
+        return self.ac_config
 
     def score_data(self):
         self.hypnodensity = list()
         for l in self.config.models_used:
-            hyp = Hypnodensity.run_data(self.encodedD, l, self.config.hypnodensity_model_root_path)
+            hyp = Hypnodensity.run_data(self.encodedD, l, self.config.hypnodensity_model_root_path, self.config.segsize)
             hyp = softmax(hyp)
             self.hypnodensity.append(hyp)
 

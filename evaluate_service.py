@@ -6,6 +6,23 @@ import uuid
 
 app = Bottle()
 
+
+NARCO_CONFIG = {
+    "show": {
+        "diagnosis": False
+    },
+    "save": {
+        "plot": True,
+        "hypnogram": True,
+        "hypnodensity": True,
+        "diagnosis": False,
+        "hynogram_anl": True
+    },
+    "appConfig": {
+        "segsize": 30 # overrides auto-detection via model name
+    }
+}
+
 def copy_filelike_to_filelike(src, dst, bufsize=16384):
     while True:
         buf = src.read(bufsize)
@@ -14,11 +31,11 @@ def copy_filelike_to_filelike(src, dst, bufsize=16384):
         dst.write(buf)
 
 
-def do_cleanup(file_uuid):
-    to_clean = ['.edf','.pkl','.hypno_pkl','.anl','.png','.hypnogram','.zip']
-    for i in to_clean:
+def do_cleanup(id):
+    to_clean = [ '.edf', '.pkl', '.hypno_pkl','.anl','.hypnodensity.png','.hypnodensity.txt','.hypnogram.txt','.zip']
+    for suffix in to_clean:
         try:
-            os.remove(file_uuid + i)
+            os.remove(id + suffix)
         except:
             continue
 
@@ -30,24 +47,23 @@ def reply(filename):
 @app.route('/api', method='POST')
 def evaluation():
     src = request.body
-    random_name = str(uuid.uuid1())
+    id = str(uuid.uuid1())
     
     @app.hook('after_request')
     def cleaning_up():
         print('cleaning files')
-        do_cleanup(random_name)
+        do_cleanup(id)
     
-    with open(random_name + ".edf", "wb") as upload:
+    with open(id + ".edf", "wb") as upload:
         copy_filelike_to_filelike(src, upload)
     
-    inf_narco_app.main(random_name + ".edf", {})
-    with ZipFile(random_name + ".zip", mode='w') as returnzip:
-        returnzip.write(random_name + ".anl")
-        returnzip.write(random_name + ".png")
-        returnzip.write(random_name + ".hypnogram")
+    inf_narco_app.main(id + ".edf", NARCO_CONFIG)
+    with ZipFile(id + ".zip", mode='w') as returnzip:
+        for suffix in ['.anl','.hypnogram.txt','.hypnodensity.png','.hypnodensity.txt']:
+            returnzip.write(id + suffix)
     
-    print('returning results')
-    return reply(random_name + '.zip')
+    print('returning results for ' + id)
+    return reply(id + '.zip')
 
 
 run(app, host='0.0.0.0', port=80, debug=True)

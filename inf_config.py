@@ -76,7 +76,7 @@ class Config(object):
 
     def __init__(self, scope, num_features, num_hidden, segsize, lstm, num_classes, batch_size, max_train_len, atonce,
                  restart=True, model_name='small_lstm', is_train=False,
-                 root_model_dir = './',  # Change this if models are saved elsewhere
+                 root_model_dir = './',  # Change this if models are saved elsewhere,
                 ):
 
         self.hypnodensity_model_dir = os.path.join(root_model_dir, scope, model_name)
@@ -111,7 +111,7 @@ class Config(object):
 # Now we can pass Config to ACConfig for construction; inheritence.
 class ACConfig(Config):
 
-    def __init__(self, restart=True, model_name='ac_rh_ls_lstm_01', is_training=False, root_model_dir = './'):
+    def __init__(self, restart=True, model_name='ac_rh_ls_lstm_01', is_training=False, root_model_dir = './', segsize_override=None):
 
         print('model: ' + model_name)
         if model_name[3:5] == 'lh':
@@ -139,6 +139,10 @@ class ACConfig(Config):
             batch_size = 30
         else:
             batch_size = 1
+
+        print("segsize: " + str(segsize) + ", segsize_override: " + str(segsize_override));
+        if segsize_override:
+            segsize = segsize_override
 
         scope = 'ac'
         num_features = 1640
