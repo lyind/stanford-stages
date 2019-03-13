@@ -244,7 +244,7 @@ class NarcoApp(object):
             if self.config.segsize is None:
                 raise 'AppConfig.segsize is required to export hypnogram to ANL format'
 
-            epoch_length_millies = self.config.segsize * 1000
+            epoch_length_millies = self.config.segsize * 250  #meaning of segsize is not epoch-length! (factor 4)
             format_anl.serialize_anl(anlFile, anl_stages, ts, epoch_length_millies)
 
     def get_narco_gpmodels(self):
