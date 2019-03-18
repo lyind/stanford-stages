@@ -72,6 +72,7 @@ def main(edfFilename,
     appConfig.lightsOff = configInput.get('lightsOff', [])
     appConfig.lightsOn = configInput.get('lightsOn', [])
     appConfig.segsize = configInput.get('appConfig', {}).get('segsize', None)
+    appConfig.cpu_max = configInput.get('appConfig', {}).get('cpu_max')
 
     hyp = {'show': {}, 'save': {}, 'filename': {}}
     hyp['show']['plot'] = False

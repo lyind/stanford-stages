@@ -19,7 +19,8 @@ NARCO_CONFIG = {
         "hynogram_anl": True
     },
     "appConfig": {
-        "segsize": 120 # overrides auto-detection via model name, segsize = 4*epoch_length
+        "segsize": 120, # overrides auto-detection via model name, segsize = 4*epoch_length
+        "cpu_max": 7    # maximum amount of cpu cores assigned for multi-thread tasks
     }
 }
 
