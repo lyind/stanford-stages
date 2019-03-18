@@ -261,11 +261,11 @@ class Hypnodensity(object):
         with pyedflib.EdfReader(self.edf_pathname) as edf:
             Labels = edf.getSignalLabels()
             Channels = { 'O1': {'expr': ".*O1.*", 'ref': ['A2', 'M2'], 'label': 'O1', 'isReferenced': False },
-                        'O2': {'expr': "(^.{0}|[^pP])O2.*", 'ref': ['A1', 'M1'], 'label': 'O2', 'isReferenced': False },
+                        'O2': {'expr': "(^.{0}|[^pPaA])O2.*", 'ref': ['A1', 'M1'], 'label': 'O2', 'isReferenced': False },
                         'C3': {'expr': ".*C3.*", 'ref': ['A2', 'M2'], 'label': 'C3', 'isReferenced': False },
                         'C4': {'expr': ".*C4.*", 'ref': ['A1', 'M1'], 'label': 'C4', 'isReferenced': False },
-                        'EOG-L': {'expr': "EOG.?[1Ll]", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': 'EOG-L', 'isReferenced': False },
-                        'EOG-R': {'expr': "EOG.?[2Rr]", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': 'EOG-R', 'isReferenced': False }
+                        'EOG-L': {'expr': "EOG.?([1Ll]|[eE][1lL])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': 'EOG-L', 'isReferenced': False },
+                        'EOG-R': {'expr': "EOG.?([2Rr]|[eE][2rR])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': 'EOG-R', 'isReferenced': False }
                     }
             Translate = {}
 
@@ -321,7 +321,7 @@ class Hypnodensity(object):
                 if 'eference' in ch:
                     for ch2 in Translate:
                         if ch2 in ch and ch2 != ch:
-                            Filter.apend(ch)
+                            Filter.append(ch)
             for x in Filter:
                 del Translate[x]
             
