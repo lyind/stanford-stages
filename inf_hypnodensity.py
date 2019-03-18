@@ -290,7 +290,7 @@ class Hypnodensity(object):
     
 #find potential references for unreferenced channels
             for ch in Channels:
-                if Channels[ch]['label'] in Translate:
+                if (Channels[ch]['label'] + '_unreferenced') in Translate:
                     if not Channels[ch]['isReferenced']:
                         for label in Labels:
                             for r in Channels[ch]['ref']:
@@ -357,7 +357,7 @@ class Hypnodensity(object):
             Deck = {}
             for entry in self.loaded_channels:
                 if 'unreferenced' in entry:
-                    for new_ch in ORDER:
+                    for new_ch in self.ORDER:
                         if new_ch in entry:
                             if (new_ch + '_Reference') in self.loaded_channels:
                                 CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
