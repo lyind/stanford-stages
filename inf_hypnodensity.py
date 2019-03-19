@@ -260,85 +260,68 @@ class Hypnodensity(object):
 
         with pyedflib.EdfReader(self.edf_pathname) as edf:
             Labels = edf.getSignalLabels()
-            Channels = { 'O1': {'expr': ".*O1.*", 'ref': ['A2', 'M2'], 'label': 'O1', 'isReferenced': False },
-                        'O2': {'expr': "(^.{0}|[^pPaA])O2.*", 'ref': ['A1', 'M1'], 'label': 'O2', 'isReferenced': False },
-                        'C3': {'expr': ".*C3.*", 'ref': ['A2', 'M2'], 'label': 'C3', 'isReferenced': False },
-                        'C4': {'expr': ".*C4.*", 'ref': ['A1', 'M1'], 'label': 'C4', 'isReferenced': False },
-                        'EOG-L': {'expr': "EOG.?([1Ll]|[eE][1lL])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': 'EOG-L', 'isReferenced': False },
-                        'EOG-R': {'expr': "EOG.?([2Rr]|[eE][2rR])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': 'EOG-R', 'isReferenced': False }
+            Channels = { 'O1': {'expr': ".*O1.*", 'ref': ['A2', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None },
+                        'O2': {'expr': "(^.{0}|[^pPaA])O2.*", 'ref': ['A1', 'M1'], 'label': None, 'isReferenced': False, 'ref_label': None },
+                        'C3': {'expr': ".*C3.*", 'ref': ['A2', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None },
+                        'C4': {'expr': ".*C4.*", 'ref': ['A1', 'M1'], 'label': None, 'isReferenced': False, 'ref_label': None },
+                        'EOG-L': {'expr': "EOG.?([1Ll]|[eE][1lL])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None },
+                        'EOG-R': {'expr': "EOG.?([2Rr]|[eE][2rR])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None }
                     }
-            Translate = {}
-
-            print('after defining Channels')
-            print('nex step is to extract channels from EDF')
-            pdb.set_trace()
 
 #finding channels and check if referenced
             for label in Labels:
                 for ch in Channels:
                     ident = re.search(Channels[ch]['expr'], label)
                     if ident:
-                        print('identified channel ' + label + ' as: ' + Channels[ch]['label'])
+                        print('identified channel ' + label + ' as: ' + ch)
+                        Channels[ch]['label'] = label
                         for r in Channels[ch]['ref']:
                             if r in label:
                                 print('is already referenced')
                                 Channels[ch]['isReferenced'] = True
-                                Translate[Channels[ch]['label']] = label
                         if not Channels[ch]['isReferenced']:
                                 print('appears unreferenced')
-                                Translate[Channels[ch]['label'] + '_unreferenced'] = label
-    
-#find potential references for unreferenced channels
-            for ch in Channels:
-                if (Channels[ch]['label'] + '_unreferenced') in Translate:
-                    if not Channels[ch]['isReferenced']:
-                        for label in Labels:
-                            for r in Channels[ch]['ref']:
-                                if r in label:
-                                    print('identified ' + label + ' as suitable reference for ' + Channels[ch]['label'])
-                                    Translate[Channels[ch]['label'] + '_Reference'] = label
+                                for ref_label in Labels:
+                                    for r in Channels[ch]['ref']:
+                                        if r in ref_label:
+                                            print('identified ' + ref_label + ' as suitable reference for ' + ch)
+                                            Channels[ch]['ref_label'] = ref_label
+                                if not Channels[ch]['ref_label']:
+                                    print('No reference found for: ' + ch)
     
 #find chin-EMG
             for label in Labels:
                 ident = re.search(".*[cC][hH][iI][nN].*", label)
                 if ident:
                     print('found chin-EMG as: ' + label)
-                    Translate['EMG'] = label
-            if 'EMG' not in Translate:
+                    Channels['EMG'] = {'label':label, 'ref_label': None}
+            if 'EMG' not in Channels:
                 for label in Labels:
                     ident = re.search(".*[eE][mM][gG].*", label)
                     if ident:
                         print('found chin-EMG as: ' + label)
-                        Translate['EMG'] = label
+                        Channels['EMG'] = {'label':label, 'ref_label': None}
 
-            print('the full list within Translate looks like this now:')
-            print(Translate.keys())
-            pdb.set_trace()
-
-#filter out unreferenced channels, if same referenced channel exists
-            Filter = []
-            for ch in Translate:
-                if 'eference' in ch:
-                    for ch2 in Translate:
-                        if ch2 in ch and ch2 != ch:
-                            Filter.append(ch)
-            for x in Filter:
-                del Translate[x]
-            
-            print('after filtering out unnecesary channels:')
-            print(Translate.keys())
-            pdb.set_trace()
-            
             Dimension = {}
             Frequenz = {}
 
-            for entry in Translate:
-                CH = edf.readSignal(Labels.index(Translate[entry]))
-                self.loaded_channels[entry] = CH
-                dim_ch = edf.getPhysicalDimension(Labels.index(Translate[entry])).lower()
-                Dimension[entry] = dim_ch
-                fr_ch = int(edf.samplefrequency(Labels.index(Translate[entry])))
-                Frequenz[entry] = fr_ch
+            for ch in Channels:
+                if Channels[ch]['label']:
+                    CH = edf.readSignal(Labels.index(Channels[ch]['label']))
+                    self.loaded_channels[ch] = CH
+                    if Channels[ch]['ref_label']:
+                        if Channels[ch]['ref_label'] not in self.loaded_channels:
+                            REF = edf.readSignal(Labels.index(Channels[ch]['ref_label']))
+                            self.loaded_channels[Channels[ch]['ref_label']] = REF
+                            dim_ref = edf.getPhysicalDimension(Labels.index(Channels[ch]['ref_label'])).lower()
+                            Dimension[Channels[ch]['ref_label']] = dim_ref
+                            fr_ref = int(edf.samplefrequency(Labels.index(Channels[ch]['ref_label'])))
+                            Frequenz[Channels[ch]['ref_label']] = fr_ref
+                    dim_ch = edf.getPhysicalDimension(Labels.index(Channels[ch]['label'])).lower()
+                    Dimension[ch] = dim_ch
+                    fr_ch = int(edf.samplefrequency(Labels.index(Channels[ch]['label'])))
+                    Frequenz[ch] = fr_ch
+
             for ch in self.loaded_channels:
                 if Dimension[ch] == 'mv' :
                     myprint('mv')
@@ -353,31 +336,19 @@ class Hypnodensity(object):
                 self.resampling(ch, fs)
                 print('Resampling done')
                 
-#referencing unreferenced channels if reference given or rename if no reference mentioned
-            Deck = {}
-            for entry in self.loaded_channels:
-                if 'unreferenced' in entry:
-                    for new_ch in self.ORDER:
-                        if new_ch in entry:
-                            if (new_ch + '_Reference') in self.loaded_channels:
-                                CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[new_ch + '_Reference'])
-                                Deck[new_ch] = CH
-                            else:
-                                Deck[new_ch] = entry
-
-            print('after referencing the unreferenced channels')
-            pdb.set_trace()
+#referencing unreferenced channels if reference given 
+            for entry in Channels:
+                if Channels[entry]['ref_label']:
+                    CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[Channels[entry]['ref_label']])
+                    self.loaded_channels[entry] = CH
 
 #take out unnecessary channels
             Takeout = []
             for entry in self.loaded_channels:
-                if 'unreferenced' in entry or 'Reference' in entry:
+                if entry not in self.ORDER:
                     Takeout.append(entry)
             for x in Takeout:
                 del self.loaded_channels[x]
-
-            for ch in Deck:
-                self.loaded_channels[ch] = Deck[ch]
 
             retitle = 0
             if 'O1' not in self.loaded_channels and 'O2' not in self.loaded_channels:
@@ -386,10 +357,6 @@ class Hypnodensity(object):
                     retitle = retitle +1
             if retitle > 0:
                 del self.loaded_channels['C4']
-
-        print('checking final result of self.loaded_channels:')
-        print(self.loaded_channels.keys())
-        pdb.set_trace()
 
 
     def trim(self, ch):
