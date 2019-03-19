@@ -162,6 +162,7 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
          [0.2, 0.89, 0.93],   # aqua/turquoise
          [0.22, 0.44, 0.73],  # blue
          [0.34, 0.70, 0.39]]  # green
+    L = ['N1','N2','N3','REM']
 
     for i in range(4):
         xy = np.zeros([av.shape[0] * 2, 2])
@@ -171,8 +172,10 @@ def renderHypnodensity(hypnodensity, showPlot=False, savePlot=False, fileName='t
         xy[:av.shape[0], 1] = av[:, i]
         xy[av.shape[0]:, 1] = np.flip(av[:, i + 1], axis=0)
 
-        poly = Polygon(xy, facecolor=C[i], edgecolor=None)
+        poly = Polygon(xy, facecolor=C[i], edgecolor=None, label=L[i] )
         ax.add_patch(poly)
+        plt.xlabel('Epochs')
+        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4, mode="expand", borderaxespad=0.)
 
     plt.xlim([0, av.shape[0]])
     # fig.savefig('test.png')
