@@ -258,6 +258,17 @@ class Hypnodensity(object):
     def loadEDF(self):
         self.loaded_channels = {}
 
+        def loading(Target_dict, channel, path_name, origin_edf, name_list):
+            Target_dict[channel] = origin_edf.readSignal(name_list.index(path_name))
+            if origin_edf.getPhysicalDimension(name_list.index(path_name)).lower() == 'mv':
+                Target_dict[channel] *= 1e3
+            elif origin_edf.getPhysicalDimension(name_list.index(path_name)).lower() == 'v':
+                Target_dict[channel] *= 1e6
+            fs = int(origin_edf.samplefrequency(name_list.index(path_name)))
+            self.resampling(channel, fs)
+            print('Resampling done')
+
+        
         with pyedflib.EdfReader(self.edf_pathname) as edf:
             Labels = edf.getSignalLabels()
             Channels = { 'O1': {'expr': ".*O1.*", 'ref': ['A2', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None },
@@ -289,12 +300,11 @@ class Hypnodensity(object):
                                 if not Channels[ch]['ref_label']:
                                     print('No reference found for: ' + ch)
     
-#find chin-EMG
-            for label in Labels:
-                ident = re.search(".*[cC][hH][iI][nN].*", label)
-                if ident:
+                emg_ident = re.search(".*[cC][hH][iI][nN].*", label)
+                if emg_ident:
                     print('found chin-EMG as: ' + label)
                     Channels['EMG'] = {'label':label, 'ref_label': None}
+            
             if 'EMG' not in Channels:
                 for label in Labels:
                     ident = re.search(".*[eE][mM][gG].*", label)
@@ -302,45 +312,16 @@ class Hypnodensity(object):
                         print('found chin-EMG as: ' + label)
                         Channels['EMG'] = {'label':label, 'ref_label': None}
 
-            Dimension = {}
-            Frequenz = {}
-
+#extracting data from edf, resampling and auto-referencing
             for ch in Channels:
                 if Channels[ch]['label']:
-                    CH = edf.readSignal(Labels.index(Channels[ch]['label']))
+                    loading(self.loaded_channels, ch, Channels[ch]['label'], edf, Labels)
+                if Channels[ch]['ref_label']:
+                    if Channels[ch]['ref_label'] not in self.loaded_channels:
+                        loading(self.loaded_channels, Channels[ch]['ref_label'], Channels[ch]['ref_label'], edf, Labels)
+                    print('referencing ' + Channels[ch]['label'] + ' with ' + Channels[ch]['ref_label'])
+                    CH = np.subtract(self.loaded_channels[ch], self.loaded_channels[Channels[ch]['ref_label']])
                     self.loaded_channels[ch] = CH
-                    if Channels[ch]['ref_label']:
-                        if Channels[ch]['ref_label'] not in self.loaded_channels:
-                            REF = edf.readSignal(Labels.index(Channels[ch]['ref_label']))
-                            self.loaded_channels[Channels[ch]['ref_label']] = REF
-                            dim_ref = edf.getPhysicalDimension(Labels.index(Channels[ch]['ref_label'])).lower()
-                            Dimension[Channels[ch]['ref_label']] = dim_ref
-                            fr_ref = int(edf.samplefrequency(Labels.index(Channels[ch]['ref_label'])))
-                            Frequenz[Channels[ch]['ref_label']] = fr_ref
-                    dim_ch = edf.getPhysicalDimension(Labels.index(Channels[ch]['label'])).lower()
-                    Dimension[ch] = dim_ch
-                    fr_ch = int(edf.samplefrequency(Labels.index(Channels[ch]['label'])))
-                    Frequenz[ch] = fr_ch
-
-            for ch in self.loaded_channels:
-                if Dimension[ch] == 'mv' :
-                    myprint('mv')
-                    self.loaded_channels[ch] *= 1e3
-                elif Dimension[ch] == 'v' :
-                    myprint('v')
-                    self.loaded_channels[ch] *= 1e6
-
-                fs = Frequenz[ch]
-                print('fs', fs)
-
-                self.resampling(ch, fs)
-                print('Resampling done')
-                
-#referencing unreferenced channels if reference given 
-            for entry in Channels:
-                if Channels[entry]['ref_label']:
-                    CH = np.subtract(self.loaded_channels[entry], self.loaded_channels[Channels[entry]['ref_label']])
-                    self.loaded_channels[entry] = CH
 
 #take out unnecessary channels
             Takeout = []
@@ -357,6 +338,10 @@ class Hypnodensity(object):
                     retitle = retitle +1
             if retitle > 0:
                 del self.loaded_channels['C4']
+
+            print('loaded channels are now:')
+            print(self.loaded_channels)
+            pdb.set_trace()
 
 
     def trim(self, ch):
