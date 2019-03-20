@@ -303,7 +303,7 @@ class Hypnodensity(object):
                 emg_ident = re.search(".*[cC][hH][iI][nN].*", label)
                 if emg_ident:
                     print('found chin-EMG as: ' + label)
-                    Channels['EMG'] = {'label':label, 'ref_label': None}
+                    Channels['EMG'] = {'expr': "some string to prevent an ERROR", 'label':label, 'ref_label': None}
             
             if 'EMG' not in Channels:
                 for label in Labels:
