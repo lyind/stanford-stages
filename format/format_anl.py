@@ -17,8 +17,8 @@ def serialize_anl(out_file, stages, starttime_seconds, epoch_duration_millies, c
     
     # use default colorscheme if none has been specified
     if colors is None:
-        red = 0x00FF0000
-        blue = 0x000000FF
+        blue = 0x00FF0000
+        red = 0x000000FF
         colors = [red, red, red, blue, red, red]
 
     # convert date from UNIX timestamps to "borland/excel days since 01-01-1900"
