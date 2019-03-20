@@ -339,10 +339,6 @@ class Hypnodensity(object):
             if retitle > 0:
                 del self.loaded_channels['C4']
 
-            print('loaded channels are now:')
-            print(self.loaded_channels)
-            pdb.set_trace()
-
 
     def trim(self, ch):
         # 30 represents the epoch length most often used in standard hypnogram scoring.
