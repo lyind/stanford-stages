@@ -1,20 +1,16 @@
+import sys
 import os
 from bottle import Bottle, route, request, run, static_file, response, install
 from zipfile import ZipFile
 import uuid
 
-# initialize site.USER_SITE package to circumvent error in tensorflow's __init__.py when it is None
-from site import getusersitepackages
-getusersitepackages()
-
-# avoid tkinter (Tk toolkit support for python is not available on windows embedded python)
+# avoid tkinter backend (Tk toolkit support for python is not available on windows embedded python)
 import matplotlib
 matplotlib.use('agg')
 
 import inf_narco_app
 
 app = Bottle()
-
 
 NARCO_CONFIG = {
     "show": {
@@ -76,5 +72,4 @@ def evaluation():
     return reply(id + '.zip')
 
 
-run(app, host='0.0.0.0', port=80, debug=True)
-
+run(app, host='0.0.0.0', port=37676, debug=True)
