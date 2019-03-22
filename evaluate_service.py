@@ -1,8 +1,17 @@
 import os
 from bottle import Bottle, route, request, run, static_file, response, install
-import inf_narco_app
 from zipfile import ZipFile
 import uuid
+
+# initialize site.USER_SITE package to circumvent error in tensorflow's __init__.py when it is None
+from site import getusersitepackages
+getusersitepackages()
+
+# avoid tkinter (Tk toolkit support for python is not available on windows embedded python)
+import matplotlib
+matplotlib.use('agg')
+
+import inf_narco_app
 
 app = Bottle()
 
