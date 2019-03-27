@@ -225,8 +225,7 @@ class Hypnodensity(object):
         for ch in self.loaded_channels:
             info[ch] = [self.loaded_channels[ch], self.CCsize[ch], 0.25, self.fs]
 
-        print('amount of CPU is: ')
-        print(multiprocessing.cpu_count())
+        print('number of CPUs: ' + str(multiprocessing.cpu_count()))
         cpu_set = min(self.cpu_max ,max(1, (multiprocessing.cpu_count()-1)))
         
         futures = []
@@ -271,11 +270,13 @@ class Hypnodensity(object):
             elif dimension == 'v':
                 ch_signal *= 1e6
             original_fs = int(source_edf.samplefrequency(i))
+            print(target_label + ': original samplerate: ' + str(original_fs));
+            print(target_label + ': resampling: ' + str(self.fs));
             resampled_ch = self.resample(ch_signal, original_fs, self.fs)
-            print('Resampling done')
+            print(target_label + ': Resampling done')
             return resampled_ch
 
-        def load_and_reference_channel(channel_state):
+        def load_and_reference_channel(channel_state, target_label):
             label = channel_state['label']
             res_ch = load_channel(ch, label, edf, Labels)
             ref = channel_state['ref_label']
@@ -285,7 +286,7 @@ class Hypnodensity(object):
                 else:
                     res_ref = self.loaded_channels[ref] = load_channel(ref, ref, edf, Labels)
                 
-                print('referencing ' + label + ' with ' + ref)
+                print(target_label + ': referencing ' + label + ' with ' + ref)
                 self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
             else:
                 self.loaded_channels[ch] = res_ch
@@ -299,39 +300,52 @@ class Hypnodensity(object):
                         'EOG-L': {'expr': "EOG.?([1Ll]|[eE][1lL])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None },
                         'EOG-R': {'expr': "EOG.?([2Rr]|[eE][2rR])", 'ref': ['A1', 'A2', 'M1', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None }
                     }
+                    
+            def find_reference_label(ref_candidates):
+                for ref_label in Labels:
+                    for r in ref_candidates:
+                        if r in ref_label:
+                            return ref_label
+                return None
+                            
+            def label_is_reference(ref_candidates, label):
+                for r in ref_candidates:
+                    if r in label:
+                        return True
+                return False
 
 #finding channels and check if referenced
             for label in Labels:
                 for ch in Channels:
-                    ident = re.search(Channels[ch]['expr'], label)
+                    channel_state = Channels[ch]
+                    ident = re.search(channel_state['expr'], label)
                     if ident:
-                        print('identified channel ' + label + ' as: ' + ch)
-                        Channels[ch]['label'] = label
-                        for r in Channels[ch]['ref']:
-                            if r in label:
-                                print('is already referenced')
-                                Channels[ch]['isReferenced'] = True
-                        if not Channels[ch]['isReferenced']:
-                                print('appears unreferenced')
-                                for ref_label in Labels:
-                                    for r in Channels[ch]['ref']:
-                                        if r in ref_label:
-                                            print('identified ' + ref_label + ' as suitable reference for ' + ch)
-                                            Channels[ch]['ref_label'] = ref_label
-                                if not Channels[ch]['ref_label']:
-                                    print('No reference found for: ' + ch)
+                        print(ch + ': identified ' + label + ' as: ' + ch)
+                        channel_state['label'] = label
+                        
+                        channel_state['isReferenced'] = label_is_reference(channel_state['ref'], label)
+                        if channel_state['isReferenced']:
+                            print(ch + ': is already referenced')
+                        else:
+                            print(ch + ': appears unreferenced')
+                            channel_state['ref_label'] = find_reference_label(channel_state['ref'])
+                            if channel_state['ref_label']:
+                                print(ch + ': identified ' + channel_state['ref_label'] + ' as suitable reference')
+                            else:
+                                print(ch + ': No reference found')
     
                 emg_ident = re.search(".*[cC][hH][iI][nN].*", label)
                 if emg_ident:
-                    print('found chin-EMG as: ' + label)
+                    print('EMG: found chin-EMG as: ' + label)
                     Channels['EMG'] = {'expr': "some string to prevent an ERROR", 'label':label, 'ref_label': None}
             
             if 'EMG' not in Channels:
                 for label in Labels:
                     ident = re.search(".*[eE][mM][gG].*", label)
                     if ident:
-                        print('found chin-EMG as: ' + label)
+                        print('EMG: found chin-EMG as: ' + label)
                         Channels['EMG'] = {'label':label, 'ref_label': None}
+                        break
             
 #extracting data from edf, resampling and auto-referencing
             cpu_set = min(self.cpu_max ,max(1, (multiprocessing.cpu_count()-1)))
@@ -341,7 +355,7 @@ class Hypnodensity(object):
                 for ch in Channels:
                     channel_state = Channels[ch]
                     if channel_state['label']:
-                        future = executor.submit(load_and_reference_channel, channel_state)
+                        future = executor.submit(load_and_reference_channel, channel_state, ch)
                         futures.append(future)
             
             for future in futures:
@@ -386,9 +400,7 @@ class Hypnodensity(object):
                     self.loaded_channels[ch] = signal.filtfilt(Fl[0], Fl[1], self.loaded_channels[ch]).astype(
                         dtype=np.float32)
 
-    def resample(self, ch, original_frequency, target_frequency ):
-        myprint("original samplerate = ", original_frequency);
-        myprint("resampling to ", target_frequency)
+    def resample(self, data, original_frequency, target_frequency ):
         if original_frequency==500 or original_frequency==200:
             numerator = [[-0.0175636017706537, -0.0208207236911009, -0.0186368912579407, 0.0, 0.0376532652007562,
                 0.0894912177899215, 0.143586518157187, 0.184663795586300, 0.200000000000000, 0.184663795586300,
@@ -398,12 +410,12 @@ class Hypnodensity(object):
                 -0.050624178425469]]  # from matlab
             if original_frequency==500:
                 s = signal.dlti(numerator[0], [1], dt=1. / target_frequency)
-                resampled_ch = signal.decimate(ch, original_frequency // target_frequency, ftype=s, zero_phase=False)
+                resampled_ch = signal.decimate(data, original_frequency // target_frequency, ftype=s, zero_phase=False)
             elif original_frequency==200:
                 s = signal.dlti(numerator[1], [1], dt=1. / target_frequency)
-                resampled_ch = signal.decimate(ch, original_frequency // target_frequency, ftype=s, zero_phase=False)
+                resampled_ch = signal.decimate(data, original_frequency // target_frequency, ftype=s, zero_phase=False)
         else:
-            resampled_ch = signal.resample_poly(ch, target_frequency, original_frequency, axis=0, window=('kaiser', 5.0))
+            resampled_ch = signal.resample_poly(data, target_frequency, original_frequency, axis=0, window=('kaiser', 5.0))
         return resampled_ch
 
     def psg_noise_level(self):
