@@ -258,7 +258,7 @@ class Hypnodensity(object):
     def loadEDF(self):
         self.loaded_channels = {}
 
-        def load_channels(target_label, original_label, source_edf, edf_labels):
+        def load_channel(target_label, original_label, source_edf, edf_labels):
             i = edf_labels.index(original_label)
             ch_signal = source_edf.readSignal(i)
             dimension = source_edf.getPhysicalDimension(i).lower()
@@ -271,6 +271,22 @@ class Hypnodensity(object):
             print('Resampling done')
             return resampled_ch
 
+		loadSignal_lock = Lock()
+		def load_and_reference_channel(channel_state):
+			label = channel_state['label']
+			with loadSignal_lock:
+				res_ch = load_channel(ch, label, edf, Labels)
+			ref = channel_state['ref_label']
+			if ref:
+				if ref in self.loaded_channels:
+					res_ref = self.loaded_channels[ref]
+				else:
+					res_ref = load_channel(ref, ref, edf, Labels)
+					self.loaded_channels[ref] = res_ref
+				print('referencing ' + label + ' with ' + ref)
+				self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
+			else:
+				self.loaded_channels[ch] = res_ch
         
         with pyedflib.EdfReader(self.edf_pathname) as edf:
             Labels = edf.getSignalLabels()
@@ -314,23 +330,21 @@ class Hypnodensity(object):
                     if ident:
                         print('found chin-EMG as: ' + label)
                         Channels['EMG'] = {'label':label, 'ref_label': None}
-
+			
 #extracting data from edf, resampling and auto-referencing
-            for ch in Channels:
-                if Channels[ch]['label']:
-                    res_ch = load_channels(ch, Channels[ch]['label'], edf, Labels)
-                    if Channels[ch]['ref_label']:
-                        if Channels[ch]['ref_label'] in self.loaded_channels:
-                            res_ref = self.loaded_channels[Channels[ch]['ref_label']]
-                        else:
-                            res_ref = load_channels(Channels[ch]['ref_label'], Channels[ch]['ref_label'], edf, Labels)
-                            self.loaded_channels[Channels[ch]['ref_label']] = res_ref
-                        print('referencing ' + Channels[ch]['label'] + ' with ' + Channels[ch]['ref_label'])
-                        self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
-                    else:
-                        self.loaded_channels[ch] = res_ch
-                    
-
+			cpu_set = min(self.cpu_max ,max(1, (multiprocessing.cpu_count()-1)))
+			
+			futures = []
+			with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_set) as executor:
+				for ch in Channels:
+					channel_state = Channels[ch]
+					if channel_state['label']:
+						future = executor.submit(load_and_reference_channel, channel_state)
+						futures.append(future)
+			
+			for future in futures:
+				future.result()
+			
 #take out unnecessary channels
             Takeout = []
             for entry in self.loaded_channels:
@@ -496,9 +510,10 @@ class Hypnodensity(object):
             m = SCModel(ac_config)
             s = tf.train.Saver(tf.global_variables())
 
-            # print("AC config hypnodensity path",ac_config.hypnodensity_model_dir)
+            print("AC config hypnodensity path",ac_config.hypnodensity_model_dir)
 
             with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as session:
+			
                 ckpt = tf.train.get_checkpoint_state(ac_config.hypnodensity_model_dir)
 
                 s.restore(session, ckpt.model_checkpoint_path)
