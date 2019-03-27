@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pathlib import Path
 
 class AppConfig(object):
 
@@ -17,6 +18,8 @@ class AppConfig(object):
 
         # Uncomment the following when running validation comparison given in readme file.
         # self.models_used = ['ac_rh_ls_lstm_01']
+        
+        self.base_path = Path(os.path.realpath(__file__)).parent
 
         # Hypnodensity classification settings
         self.relevance_threshold = 1
@@ -36,19 +39,19 @@ class AppConfig(object):
         #                [2,2,2,2,4,4,0.4,[],[]]))
         self.loaded_channels = dict.fromkeys(self.channels)
 
-        self.psg_noise_file_pathname = './ml/noiseM.mat'
-        self.hypnodensity_model_root_path = './ml/'
-        self.hypnodensity_scale_path = './ml/scaling/'
+        self.psg_noise_file_pathname = self.base_path / 'ml/noiseM.mat'
+        self.hypnodensity_model_root_path = self.base_path / 'ml'
+        self.hypnodensity_scale_path = self.base_path / 'ml/scaling'
         # self.hypnodensity_select_features_path = './ml/'
         # self.hypnodensity_select_features_pickle_name = 'narcoFeatureSelect.p'
 
         self.Kfold = 10  # or 20
-        self.edf_path = []
+        self.edf_path = None
         self.lightsOff = []
         self.lightsOn = []
 
         # Related to classifying narcolepsy from hypnodensity features
-        self.narco_classifier_path = './ml/gp'
+        self.narco_classifier_path = self.base_path / 'ml/gp'
 
         self.narco_prediction_num_folds = 5 # for the gp narco classifier
         self.narco_prediction_scales = [0.90403101, 0.89939177, 0.90552177, 0.88393560,
@@ -76,10 +79,10 @@ class Config(object):
 
     def __init__(self, scope, num_features, num_hidden, segsize, lstm, num_classes, batch_size, max_train_len, atonce,
                  restart=True, model_name='small_lstm', is_train=False,
-                 root_model_dir = './',  # Change this if models are saved elsewhere,
+                 root_model_dir = Path(os.path.realpath(__file__)).parent,  # Change this if models are saved elsewhere,
                 ):
 
-        self.hypnodensity_model_dir = os.path.join(root_model_dir, scope, model_name)
+        self.hypnodensity_model_dir = root_model_dir / scope / model_name
 
         # Data
 
@@ -104,14 +107,14 @@ class Config(object):
 
     def checkpoint_file(self, ckpt=0):
         if ckpt == 0:
-            return os.path.join(self.hypnodensity_model_dir, 'model.ckpt')
+            return self.hypnodensity_model_dir / 'model.ckpt'
         else:
-            return os.path.join(self.hypnodensity_model_dir, 'model.ckpt-%.0f' % ckpt)
+            return self.hypnodensity_model_dir / ('model.ckpt-%.0f' % ckpt)
 
 # Now we can pass Config to ACConfig for construction; inheritence.
 class ACConfig(Config):
 
-    def __init__(self, restart=True, model_name='ac_rh_ls_lstm_01', is_training=False, root_model_dir = './', segsize_override=None):
+    def __init__(self, restart=True, model_name='ac_rh_ls_lstm_01', is_training=False, root_model_dir = Path(os.path.realpath(__file__)).parent, segsize_override=None):
 
         print('model: ' + model_name)
         if model_name[3:5] == 'lh':

@@ -291,7 +291,7 @@ class Hypnodensity(object):
             else:
                 self.loaded_channels[target_label] = res_ch
         
-        with pyedflib.EdfReader(self.edf_pathname) as edf:
+        with pyedflib.EdfReader(str(self.edf_pathname)) as edf:
             Labels = edf.getSignalLabels()
             Channels = { 'O1': {'expr': ".*O1.*", 'ref': ['A2', 'M2'], 'label': None, 'isReferenced': False, 'ref_label': None },
                         'O2': {'expr': "(^.{0}|[^pPaA])O2.*", 'ref': ['A1', 'M1'], 'label': None, 'isReferenced': False, 'ref_label': None },
@@ -482,6 +482,10 @@ class Hypnodensity(object):
         return self.ac_config
 
     def score_data(self):
+        from pathlib import Path
+        model = Path(self.config.hypnodensity_model_root_path)
+        print("AC config hypnodensity path: " + str(model) + ', is_dir=' + str(model.is_dir()))
+        
         self.hypnodensity = list()
         for l in self.config.models_used:
             hyp = Hypnodensity.run_data(self.encodedD, l, self.config.hypnodensity_model_root_path, self.config.segsize)
@@ -689,7 +693,7 @@ class HypnodensityFeatures(object):  # <-- extract_features
 
         if len(self.selected) == 0:
             try:
-                with open(os.path.join(self.select_features_path, self.select_features_pickle_name), 'rb') as sel:
+                with open(self.select_features_path / self.select_features_pickle_name, 'rb') as sel:
                     S = pickle.load(sel)
                     self.selected = S > threshold
             except FileNotFoundError as e:
@@ -707,7 +711,7 @@ class HypnodensityFeatures(object):  # <-- extract_features
 
         if len(self.meanV) == 0:
             try:
-                with open(os.path.join(self.scale_path, sc_mod + '_scale.p'), 'rb') as sca:
+                with open(self.scale_path / (sc_mod + '_scale.p'), 'rb') as sca:
                     scaled = pickle.load(sca)
                 self.meanV = np.expand_dims(scaled['meanV'], axis=1)[:, :, 0]
                 self.scaleV = np.expand_dims(scaled['scaleV'], axis=1)[:, :, 0]
