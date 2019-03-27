@@ -258,15 +258,18 @@ class Hypnodensity(object):
     def loadEDF(self):
         self.loaded_channels = {}
 
-        def loading(Target_dict, channel, path_name, origin_edf, name_list):
-            Target_dict[channel] = origin_edf.readSignal(name_list.index(path_name))
-            if origin_edf.getPhysicalDimension(name_list.index(path_name)).lower() == 'mv':
-                Target_dict[channel] *= 1e3
-            elif origin_edf.getPhysicalDimension(name_list.index(path_name)).lower() == 'v':
-                Target_dict[channel] *= 1e6
-            fs = int(origin_edf.samplefrequency(name_list.index(path_name)))
-            self.resampling(channel, fs)
+        def load_channels(target_label, original_label, source_edf, edf_labels):
+            i = edf_labels.index(original_label)
+            ch_signal = source_edf.readSignal(i)
+            dimension = source_edf.getPhysicalDimension(i).lower()
+            if dimension == 'mv':
+                ch_signal *= 1e3
+            elif dimension == 'v':
+                ch_signal *= 1e6
+            original_fs = int(source_edf.samplefrequency(i))
+            resampled_ch = self.resample(ch_signal, original_fs, self.fs)
             print('Resampling done')
+            return resampled_ch
 
         
         with pyedflib.EdfReader(self.edf_pathname) as edf:
@@ -315,13 +318,18 @@ class Hypnodensity(object):
 #extracting data from edf, resampling and auto-referencing
             for ch in Channels:
                 if Channels[ch]['label']:
-                    loading(self.loaded_channels, ch, Channels[ch]['label'], edf, Labels)
-                if Channels[ch]['ref_label']:
-                    if Channels[ch]['ref_label'] not in self.loaded_channels:
-                        loading(self.loaded_channels, Channels[ch]['ref_label'], Channels[ch]['ref_label'], edf, Labels)
-                    print('referencing ' + Channels[ch]['label'] + ' with ' + Channels[ch]['ref_label'])
-                    CH = np.subtract(self.loaded_channels[ch], self.loaded_channels[Channels[ch]['ref_label']])
-                    self.loaded_channels[ch] = CH
+                    res_ch = load_channels(ch, Channels[ch]['label'], edf, Labels)
+                    if Channels[ch]['ref_label']:
+                        if Channels[ch]['ref_label'] in self.loaded_channels:
+                            res_ref = self.loaded_channels[Channels[ch]['ref_label']]
+                        else:
+                            res_ref = load_channels(Channels[ch]['ref_label'], Channels[ch]['ref_label'], edf, Labels)
+                            self.loaded_channels[Channels[ch]['ref_label']] = res_ref
+                        print('referencing ' + Channels[ch]['label'] + ' with ' + Channels[ch]['ref_label'])
+                        self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
+                    else:
+                        self.loaded_channels[ch] = res_ch
+                    
 
 #take out unnecessary channels
             Takeout = []
@@ -362,24 +370,25 @@ class Hypnodensity(object):
                     self.loaded_channels[ch] = signal.filtfilt(Fl[0], Fl[1], self.loaded_channels[ch]).astype(
                         dtype=np.float32)
 
-    def resampling(self, ch, fs):
-        myprint("original samplerate = ", fs);
-        myprint("resampling to ", self.fs)
-        if fs==500 or fs==200:
+    def resample(self, ch, original_frequency, target_frequency ):
+        myprint("original samplerate = ", original_frequency);
+        myprint("resampling to ", target_frequency)
+        if original_frequency==500 or original_frequency==200:
             numerator = [[-0.0175636017706537, -0.0208207236911009, -0.0186368912579407, 0.0, 0.0376532652007562,
                 0.0894912177899215, 0.143586518157187, 0.184663795586300, 0.200000000000000, 0.184663795586300,
                 0.143586518157187, 0.0894912177899215, 0.0376532652007562, 0.0, -0.0186368912579407,
                 -0.0208207236911009, -0.0175636017706537],
                 [-0.050624178425469, 0.0, 0.295059334702992, 0.500000000000000, 0.295059334702992, 0.0,
                 -0.050624178425469]]  # from matlab
-            if fs==500:
-                s = signal.dlti(numerator[0], [1], dt=1. / self.fs)
-                self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], fs // self.fs, ftype=s, zero_phase=False)
-            elif fs==200:
-                s = signal.dlti(numerator[1], [1], dt=1. / self.fs)
-                self.loaded_channels[ch] = signal.decimate(self.loaded_channels[ch], fs // self.fs, ftype=s, zero_phase=False)
+            if original_frequency==500:
+                s = signal.dlti(numerator[0], [1], dt=1. / target_frequency)
+                resampled_ch = signal.decimate(ch, original_frequency // target_frequency, ftype=s, zero_phase=False)
+            elif original_frequency==200:
+                s = signal.dlti(numerator[1], [1], dt=1. / target_frequency)
+                resampled_ch = signal.decimate(ch, original_frequency // target_frequency, ftype=s, zero_phase=False)
         else:
-            self.loaded_channels[ch] = signal.resample_poly(self.loaded_channels[ch], self.fs, fs, axis=0, window=('kaiser', 5.0))
+            resampled_ch = signal.resample_poly(ch, target_frequency, original_frequency, axis=0, window=('kaiser', 5.0))
+        return resampled_ch
 
     def psg_noise_level(self):
 
@@ -453,17 +462,15 @@ class Hypnodensity(object):
 
     def segment(dat, ac_config):
 
-        once = min(ac_config.eval_nseg_atonce, int((dat.shape[1]/ac_config.segsize)-1))
-        
         # Get integer value for segment size using //
         n_seg = dat.shape[1] // ac_config.segsize
 
         dat = np.expand_dims(dat[:, :n_seg * ac_config.segsize], 0)
 
         num_batches = np.int(
-            np.ceil(np.divide(dat.shape[2], (once * ac_config.segsize), dtype='float')))
+            np.ceil(np.divide(dat.shape[2], (ac_config.eval_nseg_atonce * ac_config.segsize), dtype='float')))
 
-        Nextra = np.int(np.ceil(num_batches * once * ac_config.segsize) % dat.shape[2])
+        Nextra = np.int(np.ceil(num_batches * ac_config.eval_nseg_atonce * ac_config.segsize) % dat.shape[2])
         # why not:    Nextra = num_batches * ac_config.eval_nseg_atonce * ac_config.segsize - dat.shape[2]
 
         # fill remaining (nExtra) values with the mean value of each column
@@ -475,14 +482,12 @@ class Hypnodensity(object):
         dat = np.transpose(dat, [0, 2, 1])
         dat = np.concatenate([dat, meanF], 1)
 
-        prediction = np.zeros([num_batches * once, 5])
+        prediction = np.zeros([num_batches * ac_config.eval_nseg_atonce, 5])
 
         return dat, Nextra, prediction, num_batches
 
     def run(dat, ac_config):
 
-        once = min(ac_config.eval_nseg_atonce, int((dat.shape[1]/ac_config.segsize)-1))
-        
         with tf.Graph().as_default() as g:
             m = SCModel(ac_config)
             s = tf.train.Saver(tf.global_variables())
@@ -498,17 +503,17 @@ class Hypnodensity(object):
 
                 dat, Nextra, prediction, num_batches = Hypnodensity.segment(dat, ac_config)
                 for i in range(num_batches):
-                    x = dat[:, i * once * ac_config.segsize:(i + 1) * once * ac_config.segsize,:]
+                    x = dat[:, i * ac_config.eval_nseg_atonce * ac_config.segsize:(i + 1) * ac_config.eval_nseg_atonce * ac_config.segsize,:]
 
                     est, _ = session.run([m.logits, m.final_state], feed_dict={
                         m.features: x,
-                        m.targets: np.ones([once * ac_config.segsize, 5]),
-                        m.mask: np.ones(once * ac_config.segsize),
+                        m.targets: np.ones([ac_config.eval_nseg_atonce * ac_config.segsize, 5]),
+                        m.mask: np.ones(ac_config.eval_nseg_atonce * ac_config.segsize),
                         m.batch_size: np.ones([1]),
                         m.initial_state: state
                     })
 
-                    prediction[i * once:(i + 1) * once, :] = est
+                    prediction[i * ac_config.eval_nseg_atonce:(i + 1) * ac_config.eval_nseg_atonce, :] = est
 
                 prediction = prediction[:-int(Nextra / ac_config.segsize), :]
 
