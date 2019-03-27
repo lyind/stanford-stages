@@ -25,6 +25,7 @@ from inf_config import ACConfig
 from inf_network import SCModel
 from inf_tools import myprint
 import multiprocessing
+import threading
 import concurrent.futures
 import re
 import pdb
@@ -271,22 +272,21 @@ class Hypnodensity(object):
             print('Resampling done')
             return resampled_ch
 
-		loadSignal_lock = Lock()
-		def load_and_reference_channel(channel_state):
-			label = channel_state['label']
-			with loadSignal_lock:
-				res_ch = load_channel(ch, label, edf, Labels)
-			ref = channel_state['ref_label']
-			if ref:
-				if ref in self.loaded_channels:
-					res_ref = self.loaded_channels[ref]
-				else:
-					res_ref = load_channel(ref, ref, edf, Labels)
-					self.loaded_channels[ref] = res_ref
-				print('referencing ' + label + ' with ' + ref)
-				self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
-			else:
-				self.loaded_channels[ch] = res_ch
+        loadSignal_lock = threading.Lock()
+        def load_and_reference_channel(channel_state):
+            label = channel_state['label']
+            with loadSignal_lock:
+                res_ch = load_channel(ch, label, edf, Labels)
+            ref = channel_state['ref_label']
+            if channel_state['isReferenced']:
+                if ref in self.loaded_channels:
+                    res_ref = self.loaded_channels[ref]
+                else:
+                    res_ref = self.loaded_channels[ref] = load_channel(ref, ref, edf, Labels)
+                print('referencing ' + label + ' with ' + ref)
+                self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
+            else:
+                self.loaded_channels[ch] = res_ch
         
         with pyedflib.EdfReader(self.edf_pathname) as edf:
             Labels = edf.getSignalLabels()
@@ -330,21 +330,21 @@ class Hypnodensity(object):
                     if ident:
                         print('found chin-EMG as: ' + label)
                         Channels['EMG'] = {'label':label, 'ref_label': None}
-			
+            
 #extracting data from edf, resampling and auto-referencing
-			cpu_set = min(self.cpu_max ,max(1, (multiprocessing.cpu_count()-1)))
-			
-			futures = []
-			with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_set) as executor:
-				for ch in Channels:
-					channel_state = Channels[ch]
-					if channel_state['label']:
-						future = executor.submit(load_and_reference_channel, channel_state)
-						futures.append(future)
-			
-			for future in futures:
-				future.result()
-			
+            cpu_set = min(self.cpu_max ,max(1, (multiprocessing.cpu_count()-1)))
+            
+            futures = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_set) as executor:
+                for ch in Channels:
+                    channel_state = Channels[ch]
+                    if channel_state['label']:
+                        future = executor.submit(load_and_reference_channel, channel_state)
+                        futures.append(future)
+            
+            for future in futures:
+                future.result()
+            
 #take out unnecessary channels
             Takeout = []
             for entry in self.loaded_channels:
@@ -513,7 +513,7 @@ class Hypnodensity(object):
             print("AC config hypnodensity path",ac_config.hypnodensity_model_dir)
 
             with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as session:
-			
+            
                 ckpt = tf.train.get_checkpoint_state(ac_config.hypnodensity_model_dir)
 
                 s.restore(session, ckpt.model_checkpoint_path)
