@@ -462,15 +462,17 @@ class Hypnodensity(object):
 
     def segment(dat, ac_config):
 
+        once = min(ac_config.eval_nseg_atonce, int((dat.shape[1]/ac_config.segsize)-1))
+        
         # Get integer value for segment size using //
         n_seg = dat.shape[1] // ac_config.segsize
 
         dat = np.expand_dims(dat[:, :n_seg * ac_config.segsize], 0)
 
         num_batches = np.int(
-            np.ceil(np.divide(dat.shape[2], (ac_config.eval_nseg_atonce * ac_config.segsize), dtype='float')))
+            np.ceil(np.divide(dat.shape[2], (once * ac_config.segsize), dtype='float')))
 
-        Nextra = np.int(np.ceil(num_batches * ac_config.eval_nseg_atonce * ac_config.segsize) % dat.shape[2])
+        Nextra = np.int(np.ceil(num_batches * once * ac_config.segsize) % dat.shape[2])
         # why not:    Nextra = num_batches * ac_config.eval_nseg_atonce * ac_config.segsize - dat.shape[2]
 
         # fill remaining (nExtra) values with the mean value of each column
@@ -482,12 +484,14 @@ class Hypnodensity(object):
         dat = np.transpose(dat, [0, 2, 1])
         dat = np.concatenate([dat, meanF], 1)
 
-        prediction = np.zeros([num_batches * ac_config.eval_nseg_atonce, 5])
+        prediction = np.zeros([num_batches * once, 5])
 
         return dat, Nextra, prediction, num_batches
 
     def run(dat, ac_config):
 
+        once = min(ac_config.eval_nseg_atonce, int((dat.shape[1]/ac_config.segsize)-1))
+        
         with tf.Graph().as_default() as g:
             m = SCModel(ac_config)
             s = tf.train.Saver(tf.global_variables())
@@ -503,17 +507,17 @@ class Hypnodensity(object):
 
                 dat, Nextra, prediction, num_batches = Hypnodensity.segment(dat, ac_config)
                 for i in range(num_batches):
-                    x = dat[:, i * ac_config.eval_nseg_atonce * ac_config.segsize:(i + 1) * ac_config.eval_nseg_atonce * ac_config.segsize,:]
+                    x = dat[:, i * once * ac_config.segsize:(i + 1) * once * ac_config.segsize,:]
 
                     est, _ = session.run([m.logits, m.final_state], feed_dict={
                         m.features: x,
-                        m.targets: np.ones([ac_config.eval_nseg_atonce * ac_config.segsize, 5]),
-                        m.mask: np.ones(ac_config.eval_nseg_atonce * ac_config.segsize),
+                        m.targets: np.ones([once * ac_config.segsize, 5]),
+                        m.mask: np.ones(once * ac_config.segsize),
                         m.batch_size: np.ones([1]),
                         m.initial_state: state
                     })
 
-                    prediction[i * ac_config.eval_nseg_atonce:(i + 1) * ac_config.eval_nseg_atonce, :] = est
+                    prediction[i * once:(i + 1) * once, :] = est
 
                 prediction = prediction[:-int(Nextra / ac_config.segsize), :]
 
