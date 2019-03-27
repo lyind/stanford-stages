@@ -17,7 +17,12 @@ warnings.simplefilter('ignore', FutureWarning)  # warnings.filterwarnings("ignor
 import scipy.io as sio
 
 import tensorflow as tf
-import gpflow as gpf
+
+try:
+    import gpflow as gpf
+except ImportError:
+    print('gpflow support not available, narcolepsy analysis won\'t be available')
+
 import random
 
 # For hypnodensity plotting ...
