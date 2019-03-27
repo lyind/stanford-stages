@@ -259,9 +259,12 @@ class Hypnodensity(object):
     def loadEDF(self):
         self.loaded_channels = {}
 
+        loadSignal_lock = threading.Lock()
         def load_channel(target_label, original_label, source_edf, edf_labels):
             i = edf_labels.index(original_label)
-            ch_signal = source_edf.readSignal(i)
+			ch_signal = None
+			with loadSignal_lock:
+				ch_signal = source_edf.readSignal(i)
             dimension = source_edf.getPhysicalDimension(i).lower()
             if dimension == 'mv':
                 ch_signal *= 1e3
@@ -272,17 +275,16 @@ class Hypnodensity(object):
             print('Resampling done')
             return resampled_ch
 
-        loadSignal_lock = threading.Lock()
         def load_and_reference_channel(channel_state):
             label = channel_state['label']
-            with loadSignal_lock:
-                res_ch = load_channel(ch, label, edf, Labels)
+			res_ch = load_channel(ch, label, edf, Labels)
             ref = channel_state['ref_label']
-            if channel_state['isReferenced']:
+            if ref and not channel_state['isReferenced']:
                 if ref in self.loaded_channels:
                     res_ref = self.loaded_channels[ref]
                 else:
                     res_ref = self.loaded_channels[ref] = load_channel(ref, ref, edf, Labels)
+				
                 print('referencing ' + label + ' with ' + ref)
                 self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
             else:
