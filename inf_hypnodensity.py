@@ -278,7 +278,7 @@ class Hypnodensity(object):
 
         def load_and_reference_channel(channel_state, target_label):
             label = channel_state['label']
-            res_ch = load_channel(ch, label, edf, Labels)
+            res_ch = load_channel(target_label, label, edf, Labels)
             ref = channel_state['ref_label']
             if ref and not channel_state['isReferenced']:
                 if ref in self.loaded_channels:
@@ -287,9 +287,9 @@ class Hypnodensity(object):
                     res_ref = self.loaded_channels[ref] = load_channel(ref, ref, edf, Labels)
                 
                 print(target_label + ': referencing ' + label + ' with ' + ref)
-                self.loaded_channels[ch] = np.subtract(res_ch, res_ref)
+                self.loaded_channels[target_label] = np.subtract(res_ch, res_ref)
             else:
-                self.loaded_channels[ch] = res_ch
+                self.loaded_channels[target_label] = res_ch
         
         with pyedflib.EdfReader(self.edf_pathname) as edf:
             Labels = edf.getSignalLabels()
@@ -307,7 +307,7 @@ class Hypnodensity(object):
                         if r in ref_label:
                             return ref_label
                 return None
-                            
+                
             def label_is_reference(ref_candidates, label):
                 for r in ref_candidates:
                     if r in label:
