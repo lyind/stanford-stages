@@ -153,7 +153,11 @@ def extractEdfProperties(edf_pathname):
         print("OSError:", "Loading", edf_pathname)
         raise (osErr)
 
-    return { 'starttime': edf.getStartdatetime(), 'duration': edf.getFileDuration() }
+    # pyedflib always uses the local timezone when generating timestamps from EDF files,
+    # we must convert back to UTC
+    utc_offset = datetime.utcnow() - datetime.now()
+    
+    return { 'starttime': edf.getStartdatetime() + utc_offset, 'duration': edf.getFileDuration() }
 
 
 def changeFileExt(fullName, newExt):
