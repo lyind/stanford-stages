@@ -10,6 +10,7 @@ import os
 import sys
 import warnings
 from datetime import datetime
+from datetime import timezone
 import pdb
 warnings.simplefilter('ignore', FutureWarning)  # warnings.filterwarnings("ignore")
 from pathlib import Path
@@ -155,9 +156,7 @@ def extractEdfProperties(edf_pathname):
 
     # pyedflib always uses the local timezone when generating timestamps from EDF files,
     # we must convert back to UTC
-    utc_offset = datetime.utcnow() - datetime.now()
-    
-    return { 'starttime': edf.getStartdatetime() + utc_offset, 'duration': edf.getFileDuration() }
+    return { 'starttime': edf.getStartdatetime().replace(tzinfo=timezone.utc), 'duration': edf.getFileDuration() }
 
 
 def changeFileExt(fullName, newExt):
