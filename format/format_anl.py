@@ -26,8 +26,8 @@ def serialize_anl(out_file, stages, starttime_seconds, epoch_duration_millies, c
     # use line width
     if lineWidth is None:
         width_normal = 0x00000000
-        width_30percent = 0x1 * 1000 * 1000 * 60 * 60 * 24 * 30  # 30 days: 30% line width
-        colors = [width_normal, width_normal, width_normal, width_30percent, width_normal, width_normal]
+        width_30percent = 0x00000001 * 1000 * 1000 * 60 * 60 * 24 * 30  # 30 days: 30% line width
+        lineWidth = [width_normal, width_normal, width_normal, width_30percent, width_normal, width_normal]
         
     # convert date from UNIX timestamps to "borland/excel days since 01-01-1900"
     # 25569 days between 01-01-1900 and 01-01-1970
