@@ -319,7 +319,7 @@ class Hypnodensity(object):
                 for ch in Channels:
                     channel_state = Channels[ch]
                     ident = re.search(channel_state['expr'], label)
-                    if ident:
+                    if ident and not channel_state['isReferenced']:
                         print(ch + ': identified ' + label + ' as: ' + ch)
                         channel_state['label'] = label
                         
