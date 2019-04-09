@@ -526,6 +526,7 @@ class Hypnodensity(object):
         
         with tf.Graph().as_default() as g:
             m = SCModel(ac_config)
+
             s = tf.train.Saver(tf.global_variables())
 
             print("AC config hypnodensity path",ac_config.hypnodensity_model_dir)

@@ -1,7 +1,6 @@
 import inf_convolution as sc_conv
 
 import tensorflow as tf
-import pdb
 
 
 class SCModel(object):
@@ -34,15 +33,12 @@ class SCModel(object):
         hidden_emg = sc_conv.main(inputs[:, :, :, 1600:], ac_config, 'emg', batch_size_int)
 
         # For debugging
-        # pdb.set_trace()
         if tf.__version__ < '1.0':
             hidden_combined = tf.concat(2, [hidden_eeg, hidden_eog, hidden_emg])
         else:
             hidden_combined = tf.concat([hidden_eeg, hidden_eog, hidden_emg], 2)
-        nHid = hidden_combined.get_shape()
 
         # Regularization
-
         if ac_config.is_training and (
                 ac_config.keep_prob < 1.0):  # should this be ac_config.is_training + ac_config.keep_prob < 1.0
             iKeepProb = ac_config.keep_prob
@@ -62,6 +58,7 @@ class SCModel(object):
                                                          initial_state=initial_state)
 
             else:
+                nHid = hidden_combined.get_shape()
                 hidden_combined = tf.reshape(hidden_combined, [-1, int(nHid[2])])
                 weights = sc_conv._variable_with_weight_decay('weights', shape=[nHid[2], ac_config.num_hidden],
                                                               stddev=0.04, wd=0.00001)
