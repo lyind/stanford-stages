@@ -136,14 +136,14 @@ def random_autocorr(inputs, config, modality, batch_size):
     conv1 = conv2d_block(config, inputs, 'conv1' + modality, [1, 7, 7, nIn, nOut[0]], strides[0])
 
     # "[1, 1, 2, 2, 1]" for "NDHWC"
-    pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 1, 3, 3, 1], strides=[1, 1, 1, 2, 2],
+    pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 1, 1, 3, 3], strides=[1, 1, 1, 2, 2],
                              padding='SAME', data_format='NCDHW', name='pool1' + modality)
 
     conv2 = conv2d_block(config, pool1, 'conv2' + modality, [1, 5, 5, nOut[0], nOut[1]], strides[1])
     conv3 = conv2d_block(config, conv2, 'conv3' + modality, [1, 3, 3, nOut[1], nOut[1]], [1, 1])
 
     # "[1, 1, 2, 2, 1]" for "NDHWC"
-    pool2 = tf.nn.max_pool3d(conv3, ksize=[1, 1, 2, 2, 1], strides=[1, 1, 1, 2, 2],
+    pool2 = tf.nn.max_pool3d(conv3, ksize=[1, 1, 1, 2, 2], strides=[1, 1, 1, 2, 2],
                              padding='SAME', data_format='NCDHW', name='pool2' + modality)
 
     conv4 = conv2d_block(config, pool2, 'conv4' + modality, [1, 3, 3, nOut[1], nOut[2]], [1, 1])
