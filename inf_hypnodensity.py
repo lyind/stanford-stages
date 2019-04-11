@@ -12,6 +12,9 @@ import os  # for opening os files for pickle.
 import pickle
 from pathlib import Path
 
+# for profiling
+from tempfile import gettempdir
+
 import skimage_extract as skimage
 import numpy as np
 import pyedflib
@@ -50,6 +53,8 @@ def softmax(x):
 class Hypnodensity(object):
 
     ORDER = ['C3','C4','O1','O2', 'EOG-L', 'EOG-R', 'EMG']
+
+    run_count = 0
 
     def __init__(self, appConfig):
         self.config = appConfig
@@ -522,7 +527,12 @@ class Hypnodensity(object):
 
     def run(dat, ac_config):
 
+        ++Hypnodensity.run_count
+
         once = min(ac_config.eval_nseg_atonce, int((dat.shape[1]/ac_config.segsize)-1))
+
+        thread_count = max(multiprocessing.cpu_count() - 1, 1)
+        os.environ["MKL_NUM_THREADS"] = str(thread_count)
         
         with tf.Graph().as_default() as g:
             m = SCModel(ac_config)
@@ -531,31 +541,49 @@ class Hypnodensity(object):
 
             print("AC config hypnodensity path",ac_config.hypnodensity_model_dir)
 
-            with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as session:
-            
-                ckpt = tf.train.get_checkpoint_state(ac_config.hypnodensity_model_dir)
+            builder = tf.profiler.ProfileOptionBuilder
+            opts = builder(builder.time_and_memory()).order_by('micros').build()
+            profile_dir = gettempdir() + 'mlstages_profile_' + str(Hypnodensity.run_count)
 
-                s.restore(session, ckpt.model_checkpoint_path)
+            with tf.contrib.tfprof.ProfileContext(profile_dir) as pctx:
 
-                state = np.zeros([1, ac_config.num_hidden * 2])
+                config = tf.ConfigProto(log_device_placement=False,
+                    intra_op_parallelism_threads=thread_count,
+                    inter_op_parallelism_threads=thread_count)
 
-                dat, Nextra, prediction, num_batches = Hypnodensity.segment(dat, ac_config)
-                for i in range(num_batches):
-                    x = dat[:, i * once * ac_config.segsize:(i + 1) * once * ac_config.segsize,:]
+                with tf.Session(config=config) as session:
 
-                    est, _ = session.run([m.logits, m.final_state], feed_dict={
-                        m.features: x,
-                        m.targets: np.ones([once * ac_config.segsize, 5]),
-                        m.mask: np.ones(once * ac_config.segsize),
-                        m.batch_size: np.ones([1]),
-                        m.initial_state: state
-                    })
+                    pctx.trace_next_step()
+                    pctx.dump_next_step()
+                    ckpt = tf.train.get_checkpoint_state(ac_config.hypnodensity_model_dir)
+                    pctx.profiler.profile_operations(options=opts)
 
-                    prediction[i * once:(i + 1) * once, :] = est
+                    s.restore(session, ckpt.model_checkpoint_path)
 
-                prediction = prediction[:-int(Nextra / ac_config.segsize), :]
+                    state = np.zeros([1, ac_config.num_hidden * 2])
 
-                return prediction
+                    dat, Nextra, prediction, num_batches = Hypnodensity.segment(dat, ac_config)
+                    for i in range(num_batches):
+                        x = dat[:, i * once * ac_config.segsize:(i + 1) * once * ac_config.segsize,:]
+
+                        pctx.trace_next_step()
+                        pctx.dump_next_step()
+                        est, _ = session.run([m.logits, m.final_state], feed_dict={
+                            m.features: x,
+                            m.targets: np.ones([once * ac_config.segsize, 5]),
+                            m.mask: np.ones(once * ac_config.segsize),
+                            m.batch_size: np.ones([1]),
+                            m.initial_state: state
+                        },
+                        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE))
+                        pctx.profiler.profile_operations(options=opts)
+
+                        prediction[i * once:(i + 1) * once, :] = est
+
+
+                    prediction = prediction[:-int(Nextra / ac_config.segsize), :]
+
+                    return prediction
 
 
 class HypnodensityFeatures(object):  # <-- extract_features
