@@ -250,14 +250,28 @@ class NarcoApp(object):
 
         with open(fileName, "wb") as anlFile:
             print("Saving ANL file to " + fileName)
-            anl_stages = format_anl.transform_anl_aasm(self.get_hypnodensity())
-            # TODO possibly add "hypnoConfig.lightsOff"(offset in seconds) marker (network epoch 0 != EDF epoch 0?)
-            ts = starttime.timestamp()
 
             if self.config.segsize is None:
                 raise 'AppConfig.segsize is required to export hypnogram to ANL format'
 
-            epoch_length_millies = self.config.segsize * 250  #meaning of segsize is not epoch-length! (factor 4)
+            hypno = self.get_hypnodensity()
+            if self.config.segsize == 60:
+                segments = hypno.shape[0]
+                full_epochs = int(segments/2)
+                hypno = hypno[:int(full_epochs * 2)]
+                hypno = np.reshape(hypno, [full_epochs, 2, hypno.shape[1]])
+                hypno = np.sum(hypno, axis=1)
+                hypno = np.multiply(hypno, 0.5)
+                epoch_length_millies = self.config.segsize * 125  # segsize != epoch-length! (factor 8)
+            elif self.config.segsize == 120:
+                epoch_length_millies = self.config.segsize * 250  # segsize != epoch-length! (factor 4)
+            else:
+                raise 'AppConfig.segsize value not supported (60 or 120): ' + str(self.config.segsize)
+
+            anl_stages = format_anl.transform_anl_aasm(hypno)
+            # TODO possibly add "hypnoConfig.lightsOff"(offset in seconds) marker (network epoch 0 != EDF epoch 0?)
+            ts = starttime.timestamp()
+
             format_anl.serialize_anl(anlFile, anl_stages, ts, epoch_length_millies)
 
     def get_narco_gpmodels(self):
