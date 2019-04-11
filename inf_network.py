@@ -50,12 +50,19 @@ class SCModel(object):
         # Layer hidden
         with tf.variable_scope('hidden_hidden') as scope:
             if ac_config.lstm:
-                cell = tf.nn.rnn_cell.BasicLSTMCell(ac_config.num_hidden, forget_bias=1.0, state_is_tuple=True)
-                cell = tf.nn.rnn_cell.DropoutWrapper(cell, input_keep_prob=iKeepProb, output_keep_prob=oKeepProb)
-                initial_state = tf.nn.rnn_cell.LSTMStateTuple(self._initial_state[:, :ac_config.num_hidden],
-                                                              self._initial_state[:, ac_config.num_hidden:])
-                outputs, final_state = tf.nn.dynamic_rnn(cell, hidden_combined, dtype=tf.float32,
-                                                         initial_state=initial_state)
+                cell = tf.contrib.rnn.LSTMBlockFusedCell(ac_config.num_hidden, forget_bias=1.0, name="rnn/basic_lstm_cell")
+
+                #cell = tf.nn.rnn_cell.BasicLSTMCell(ac_config.num_hidden, forget_bias=1.0, state_is_tuple=True)
+                #cell = tf.contrib.cudnn_rnn.CudnnLSTM(ac_config.num_hidden, state_is_tuple=True)
+                #cell = tf.contrib.rnn.LSTMBlockCell(ac_config.num_hidden, forget_bias=1.0, name="basic_lstm_cell")
+
+                if ac_config.is_training:
+                    cell = tf.nn.rnn_cell.DropoutWrapper(cell, input_keep_prob=iKeepProb, output_keep_prob=oKeepProb)
+
+                #initial_state = cell.zero_state(batch_size_int, dtype=tf.float32)
+                #outputs, final_state = tf.nn.dynamic_rnn(cell, hidden_combined, dtype=tf.float32,
+                #                                         initial_state=initial_state)
+                outputs, final_state = cell(hidden_combined, dtype=tf.float32)
 
             else:
                 nHid = hidden_combined.get_shape()
