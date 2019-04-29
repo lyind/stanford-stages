@@ -82,12 +82,15 @@ def conv2d_block(config, inputs, scope_name, fShape, stride):
         kernel = _variable_with_weight_decay('weights', shape=fShape,
                                              stddev=1e-3, wd=0.00001)
 
+        kernel = tf.squeeze(kernel,[0])
         # "[1, 1, stride[0], stride[1], 1]" for "NDHWC"
-        conv = tf.nn.conv3d(inputs, kernel, [1, 1, 1, stride[0], stride[1]], padding='SAME', data_format='NCDHW')
-
-        biases = _variable_on_cpu('biases', fShape[4], tf.constant_initializer(0.0))
+#        conv = tf.nn.conv3d(inputs, kernel, [1, 1, 1, stride[0], stride[1]], padding='SAME', data_format='NCDHW')
+        conv = tf.nn.conv2d(inputs, kernel, [1, 1, stride[0], stride[1]], padding='SAME', data_format='NCHW')
+#        biases = _variable_on_cpu('biases', fShape[4], tf.constant_initializer(0.0))
+        biases = _variable_on_cpu('biases', fShape[3], tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases, data_format='NCHW')
-        bnormed = batch_norm(bias, fShape[4], [0, 2, 3, 4], config.is_training, scope=scope_name)
+#        bnormed = batch_norm(bias, fShape[4], [0, 2, 3, 4], config.is_training, scope=scope_name)
+        bnormed = batch_norm(bias, fShape[3], [0, 2, 3, 4], config.is_training, scope=scope_name)
         conv = tf.nn.relu(bnormed, name=scope.name)
         # _activation_summary(conv)
 
@@ -102,10 +105,12 @@ def random_autocorr(inputs, config, modality, batch_size):
         nOut = [np.random.randint(32, 96),
                 np.random.randint(64, 192),
                 np.random.randint(128, 384)]
-        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 2, 200])
+#        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 2, 200])
+        inputs = tf.reshape(inputs, shape=[-1, config.segsize, 2, 200])
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
-        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+#        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+        inputs = tf.transpose(inputs, perm=[0, 2, 3, 1])
 
         strides = [[3, 2], [2, 1]]
     elif modality == 'eog':
@@ -114,10 +119,12 @@ def random_autocorr(inputs, config, modality, batch_size):
         nOut = [np.random.randint(32, 96),
                 np.random.randint(64, 192),
                 np.random.randint(128, 384)]
-        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 3, 400])
+#        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 3, 400])
+        inputs = tf.reshape(inputs, shape=[-1, config.segsize, 3, 400])
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
-        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+#        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+        
 
         strides = [[4, 2], [2, 1]]
     else:
