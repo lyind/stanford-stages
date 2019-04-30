@@ -262,7 +262,7 @@ class NarcoApp(object):
                 hypno = np.reshape(hypno, [full_epochs, 2, hypno.shape[1]])
                 hypno = np.sum(hypno, axis=1)
                 hypno = np.multiply(hypno, 0.5)
-                epoch_length_millies = self.config.segsize * 125  # segsize != epoch-length! (factor 8)
+                epoch_length_millies = self.config.segsize * 500  # segsize != epoch-length! (factor 2)
             elif self.config.segsize == 120:
                 epoch_length_millies = self.config.segsize * 250  # segsize != epoch-length! (factor 4)
             else:
