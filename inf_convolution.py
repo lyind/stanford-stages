@@ -40,10 +40,10 @@ def batch_norm(x, n_out, av_dims, is_training, scope='bn'):
 
     # meanV = tf.Print(mean,[mean])
     # reshaping beta and gamma is way cheaper than transposing whole layers
-    beta = tf.reshape(beta, [1, -1, 1, 1, 1])
-    gamma = tf.reshape(gamma, [1, -1, 1, 1, 1])
-    mean = tf.reshape(mean, [1, -1, 1, 1, 1])
-    var = tf.reshape(var, [1, -1, 1, 1, 1])
+    beta = tf.reshape(beta, [1, -1, 1, 1])
+    gamma = tf.reshape(gamma, [1, -1, 1, 1])
+    mean = tf.reshape(mean, [1, -1, 1, 1])
+    var = tf.reshape(var, [1, -1, 1, 1])
     normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
     return normed
 
@@ -86,11 +86,12 @@ def conv2d_block(config, inputs, scope_name, fShape, stride):
         # "[1, 1, stride[0], stride[1], 1]" for "NDHWC"
 #        conv = tf.nn.conv3d(inputs, kernel, [1, 1, 1, stride[0], stride[1]], padding='SAME', data_format='NCDHW')
         conv = tf.nn.conv2d(inputs, kernel, [1, 1, stride[0], stride[1]], padding='SAME', data_format='NCHW')
-#        biases = _variable_on_cpu('biases', fShape[4], tf.constant_initializer(0.0))
-        biases = _variable_on_cpu('biases', fShape[3], tf.constant_initializer(0.0))
+        biases = _variable_on_cpu('biases', fShape[4], tf.constant_initializer(0.0))
+#        biases = _variable_on_cpu('biases', fShape[3], tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases, data_format='NCHW')
 #        bnormed = batch_norm(bias, fShape[4], [0, 2, 3, 4], config.is_training, scope=scope_name)
-        bnormed = batch_norm(bias, fShape[3], [0, 2, 3, 4], config.is_training, scope=scope_name)
+        bnormed = batch_norm(bias, fShape[4], [0, 2, 3], config.is_training, scope=scope_name)
+#        bnormed = batch_norm(bias, fShape[3], [0, 2, 3, 4], config.is_training, scope=scope_name)
         conv = tf.nn.relu(bnormed, name=scope.name)
         # _activation_summary(conv)
 
@@ -124,7 +125,7 @@ def random_autocorr(inputs, config, modality, batch_size):
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
 #        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
-        
+        inputs = tf.transpose(inputs, perm=[0, 2, 3, 1])
 
         strides = [[4, 2], [2, 1]]
     else:
@@ -133,34 +134,48 @@ def random_autocorr(inputs, config, modality, batch_size):
         nOut = [np.random.randint(8, 24),
                 np.random.randint(16, 48),
                 np.random.randint(32, 96)]
-        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 1, 40])
+#        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 1, 40])
+        inputs = tf.reshape(inputs, shape=[-1, config.segsize, 1, 40])
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
-        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+#        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+        inputs = tf.transpose(inputs, perm=[0, 2, 3, 1])
 
         strides = [[2, 2], [2, 1]]
 
     conv1 = conv2d_block(config, inputs, 'conv1' + modality, [1, 7, 7, nIn, nOut[0]], strides[0])
+#    conv1 = conv2d_block(config, inputs, 'conv1' + modality, [7, 7, nIn, nOut[0]], strides[0])
 
     # "[1, 1, 2, 2, 1]" for "NDHWC"
-    pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 1, 1, 3, 3], strides=[1, 1, 1, 2, 2],
-                             padding='SAME', data_format='NCDHW', name='pool1' + modality)
+#    pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 1, 1, 3, 3], strides=[1, 1, 1, 2, 2],
+#                             padding='SAME', data_format='NCDHW', name='pool1' + modality)
+    pool1 = tf.nn.max_pool(conv1, ksize=[1, 1, 3, 3], strides=[1, 1, 2, 2],
+                                padding='SAME', data_format='NCHW', name='pool1' + modality)
 
     conv2 = conv2d_block(config, pool1, 'conv2' + modality, [1, 5, 5, nOut[0], nOut[1]], strides[1])
     conv3 = conv2d_block(config, conv2, 'conv3' + modality, [1, 3, 3, nOut[1], nOut[1]], [1, 1])
+#    conv2 = conv2d_block(config, pool1, 'conv2' + modality, [5, 5, nOut[0], nOut[1]], strides[1])
+#    conv3 = conv2d_block(config, conv2, 'conv3' + modality, [3, 3, nOut[1], nOut[1]], [1, 1])
 
     # "[1, 1, 2, 2, 1]" for "NDHWC"
-    pool2 = tf.nn.max_pool3d(conv3, ksize=[1, 1, 1, 2, 2], strides=[1, 1, 1, 2, 2],
-                             padding='SAME', data_format='NCDHW', name='pool2' + modality)
+#    pool2 = tf.nn.max_pool3d(conv3, ksize=[1, 1, 1, 2, 2], strides=[1, 1, 1, 2, 2],
+#                             padding='SAME', data_format='NCDHW', name='pool2' + modality)
+    pool2 = tf.nn.max_pool(conv3, ksize=[1, 1, 2, 2], strides=[1, 1, 2, 2],
+                                padding='SAME', data_format='NCHW', name='pool2' + modality)
 
     conv4 = conv2d_block(config, pool2, 'conv4' + modality, [1, 3, 3, nOut[1], nOut[2]], [1, 1])
     conv5 = conv2d_block(config, conv4, 'conv5' + modality, [1, 3, 3, nOut[2], nOut[2]], [1, 1])
+#    conv4 = conv2d_block(config, pool2, 'conv4' + modality, [3, 3, nOut[1], nOut[2]], [1, 1])
+#    conv5 = conv2d_block(config, conv4, 'conv5' + modality, [3, 3, nOut[2], nOut[2]], [1, 1])
 
-    meanPool = tf.reduce_mean(conv5, 3, name='mean_pool1' + modality)
+#    meanPool = tf.reduce_mean(conv5, 3, name='mean_pool1' + modality)
+    meanPool = tf.reduce_mean(conv5, 2, name='mean_pool1' + modality)
 
-    meanPool = tf.reduce_mean(meanPool, 3, name='mean_pool2' + modality)
+#    meanPool = tf.reduce_mean(meanPool, 3, name='mean_pool2' + modality)
+    meanPool = tf.reduce_mean(meanPool, 2, name='mean_pool2' + modality)
 
-    meanPool = tf.transpose(meanPool, [0, 2, 1])
+    meanPool= tf.expand_dims(meanPool, 0)
+#    meanPool = tf.transpose(meanPool, [0, 2, 1])
 
     return meanPool
 
