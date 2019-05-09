@@ -27,7 +27,7 @@ class SCModel(object):
         with tf.variable_scope('input_hidden') as scope:
             inputs = self._features
             inputs = tf.reshape(inputs, shape=[batch_size_int, -1, ac_config.segsize, ac_config.num_features])
-
+#adjust last dimension in case of testing data reducing options
         hidden_eeg = sc_conv.main(inputs[:, :, :, :400], ac_config, 'eeg', batch_size_int)
         hidden_eog = sc_conv.main(inputs[:, :, :, 400:1600], ac_config, 'eog', batch_size_int)
         hidden_emg = sc_conv.main(inputs[:, :, :, 1600:], ac_config, 'emg', batch_size_int)

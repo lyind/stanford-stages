@@ -6,7 +6,7 @@ class AppConfig(object):
 
     def __init__(self):
 
-        # Model folder
+        # Model folder (adjust the selection of models for testing usage of less models)
         self.models_used = ['ac_rh_ls_lstm_01', 'ac_rh_ls_lstm_02',
                             'ac_rh_ls_lstm_03', 'ac_rh_ls_lstm_04',
                             'ac_rh_ls_lstm_05', 'ac_rh_ls_lstm_06',
@@ -148,6 +148,7 @@ class ACConfig(Config):
             segsize = segsize_override
 
         scope = 'ac'
+###adjust num_features in case of testing data reducing settings for performance; normal = 1640
         num_features = 1640
         num_classes = 5
         max_train_len = 14400

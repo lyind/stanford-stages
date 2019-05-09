@@ -303,7 +303,8 @@ class NarcoApp(object):
                 #         print('{} | Loading and predicting using {}'.format(datetime.now(), os.path.join(gpmodels_base_path, gpmodel, gpmodel + '_fold{:02}.gpm'.format(k+1))))
                 with tf.Graph().as_default() as graph:
                     with tf.Session():
-                        m = gpf.saver.Saver().load(gpmodels_base_path / gpmodel / (gpmodel + '_fold{:02}.gpm'.format(k + 1)))
+ ###before                       m = gpf.saver.Saver().load(gpmodels_base_path / gpmodel / (gpmodel + '_fold{:02}.gpm'.format(k + 1)))
+                        m = gpf.saver.Saver().load(os.path.join(gpmodels_base_path, gpmodel, gpmodel + '_fold{:02}.gpm'.format(k + 1)))
                         mean_pred[:, idx, k, np.newaxis], var_pred[:, idx, k, np.newaxis] = m.predict_y(X)
 
         self.narcolepsy_probability = np.sum(np.multiply(np.mean(mean_pred, axis=2), scales), axis=1) / np.sum(scales)

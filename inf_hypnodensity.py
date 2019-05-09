@@ -32,6 +32,7 @@ import threading
 import concurrent.futures
 import re
 import pdb
+import matplotlib.pyplot as plt
 
 def softmax(x):
     e_x = np.exp(x)
@@ -209,7 +210,20 @@ class Hypnodensity(object):
             # Remove mirrored part
             C = C[dim // 2 - 1: - dim // 2]
 
-            # Scale data with log modulus
+
+            #folding up the downside and adding together (halves data size)
+#            C = np.split(C,2, axis=0)
+#            C[1] = np.flip(C[1], axis=0)
+#            C = np.sum(C, axis=0)
+
+            #reducing resolution along y-axis (halves data size)
+#            C = np.multiply(np.sum([C[0:C.shape[0]:2],C[1::2]], axis=0),0.5)
+            
+            #adding a flipped version on the downside again(->mirrors again, upside and downside identical now); for checking for quality
+#            Cm = np.flip(C, axis=0)
+#            C = np.concatenate((C,Cm), axis=0)
+            
+            #scaling after reshape/ Scale data with log modulus
             scale = np.log(np.max(np.abs(C) + 1, axis=0) / dim)
             C = C[..., :] / (np.amax(np.abs(C), axis=0) / scale)
 
@@ -218,13 +232,9 @@ class Hypnodensity(object):
         count = -1
         enc = []
 
- ###       for c in self.channels_used: # Central, Occipital, EOG-L, EOG-R, chin
-#        Order = ['C3','C4','O1','O2','EOG-L','EOG-R', 'EMG']
-#        for c in Order:
 #            if c in self.loaded_channels:
 #                # append autocorrelations
 #                enc.append(encode_data(self.loaded_channels[c], self.loaded_channels[c], self.CCsize[c], 0.25, self.fs))
-#        info_list = {'C3':None,'C4':None,'O1':None,'O2':None,'EOG-L':None,'EOG-R':None, 'EMG':None}
  
         info = {}
         for ch in self.loaded_channels:
@@ -249,6 +259,20 @@ class Hypnodensity(object):
         min_length = np.min([x.shape[1] for x in enc])
         enc = [v[:, :min_length] for v in enc]
         # Central, Occipital, EOG-L, EOG-R, EOG-L/R, chin
+ #For visualizing the Data after CC; names = ['Cx','Ox','EOG-L','EOG-R','EOG-cross','EMG']
+ #       plt.imshow(enc[0][:,41000:41120])
+ #       plt.savefig('Cx')
+ #       plt.imshow(enc[1][:,41000:41120])
+ #       plt.savefig('Ox')
+ #       plt.imshow(enc[4][:,41000:41120])
+ #       plt.savefig('EMG')
+ #       plt.imshow(enc[5][:,41000:41120])
+ #       plt.savefig('EOG-cross')
+ #       plt.imshow(enc[2][:,41000:41120])
+ #       plt.savefig('EOG-L')
+ #       plt.imshow(enc[3][:,41000:41120])
+ #       plt.savefig('EOG-R')
+        
         enc = np.concatenate([enc[0], enc[1], enc[2], enc[3], enc[5], enc[4]], axis=0)
         self.encodedD = enc
 

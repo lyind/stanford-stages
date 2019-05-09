@@ -20,7 +20,7 @@ NARCO_CONFIG = {
         "plot": True,
         "hypnogram": True,
         "hypnodensity": True,
-        "diagnosis": False,
+        "diagnosis": True, # in case of "=False", remove '.diagnosis.txt' from to_clean and suffix-list 
         "hynogram_anl": True
     },
     "appConfig": {
@@ -39,7 +39,7 @@ def copy_filelike_to_filelike(src, dst, bufsize=16384):
 
 
 def do_cleanup(id):
-    to_clean = [ '.edf', '.pkl', '.hypno_pkl','.anl','.hypnodensity.png','.hypnodensity.txt','.hypnogram.txt','.zip']
+    to_clean = [ '.edf', '.pkl', '.hypno_pkl','.anl','.hypnodensity.png','.hypnodensity.txt','.hypnogram.txt','.zip','.diagnosis.txt']
     for suffix in to_clean:
         try:
             os.remove(id + suffix)
@@ -66,7 +66,7 @@ def evaluation():
     
     inf_narco_app.main(id + ".edf", NARCO_CONFIG)
     with ZipFile(id + ".zip", mode='w') as returnzip:
-        for suffix in ['.anl','.hypnogram.txt','.hypnodensity.png','.hypnodensity.txt']:
+        for suffix in ['.anl','.hypnogram.txt','.hypnodensity.png','.hypnodensity.txt','.diagnosis.txt']:
             returnzip.write(id + suffix)
     
     print('returning results for ' + id)

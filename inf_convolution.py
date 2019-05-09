@@ -82,6 +82,7 @@ def conv2d_block(config, inputs, scope_name, fShape, stride):
         kernel = _variable_with_weight_decay('weights', shape=fShape,
                                              stddev=1e-3, wd=0.00001)
 
+# Adjustments for conversion into 2D operation instead of 3D, putting original data-depth (D) into position batch-size (N) 
         kernel = tf.squeeze(kernel,[0])
         # "[1, 1, stride[0], stride[1], 1]" for "NDHWC"
 #        conv = tf.nn.conv3d(inputs, kernel, [1, 1, 1, stride[0], stride[1]], padding='SAME', data_format='NCDHW')
@@ -107,10 +108,11 @@ def random_autocorr(inputs, config, modality, batch_size):
                 np.random.randint(64, 192),
                 np.random.randint(128, 384)]
 #        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 2, 200])
+##Adjust last dimension in case of testing data reduction; original: inputs = tf.reshape(inputs, shape=[-1, config.segsize, 2, 200])
         inputs = tf.reshape(inputs, shape=[-1, config.segsize, 2, 200])
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
-#        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+#changed to 2D from inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
         inputs = tf.transpose(inputs, perm=[0, 2, 3, 1])
 
         strides = [[3, 2], [2, 1]]
@@ -121,10 +123,11 @@ def random_autocorr(inputs, config, modality, batch_size):
                 np.random.randint(64, 192),
                 np.random.randint(128, 384)]
 #        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 3, 400])
+##Adjust last dimension in case of testing data reduction; original: inputs = tf.reshape(inputs, shape=[-1, config.segsize, 3, 400])
         inputs = tf.reshape(inputs, shape=[-1, config.segsize, 3, 400])
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
-#        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+#changed to2D from: inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
         inputs = tf.transpose(inputs, perm=[0, 2, 3, 1])
 
         strides = [[4, 2], [2, 1]]
@@ -135,10 +138,11 @@ def random_autocorr(inputs, config, modality, batch_size):
                 np.random.randint(16, 48),
                 np.random.randint(32, 96)]
 #        inputs = tf.reshape(inputs, shape=[batch_size, -1, config.segsize, 1, 40])
+##Adjust last dimension in case of testing data reduction; original: inputs = tf.reshape(inputs, shape=[-1, config.segsize, 1, 40])
         inputs = tf.reshape(inputs, shape=[-1, config.segsize, 1, 40])
         # inputs = tf.transpose(inputs, perm=[0, 1, 4, 2, 3])
         # inputs = tf.transpose(inputs, perm=[0, 4, 1, 2, 3])
-#        inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
+#changed to 2D from: inputs = tf.transpose(inputs, perm=[0, 3, 1, 4, 2])
         inputs = tf.transpose(inputs, perm=[0, 2, 3, 1])
 
         strides = [[2, 2], [2, 1]]
